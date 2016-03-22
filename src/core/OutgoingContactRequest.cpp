@@ -171,8 +171,6 @@ void OutgoingContactRequest::removeRequest()
 
 void OutgoingContactRequest::accept()
 {
-    Protocol::ContactRequestChannel *channel = user->connection()->findChannel<Protocol::ContactRequestChannel>();
-    user->setPublicKey(channel->publicKey());
     setStatus(Accepted);
     emit accepted();
     removeRequest();

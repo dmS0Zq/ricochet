@@ -131,7 +131,6 @@ public slots:
 
     void setNickname(const QString &nickname);
     void setHostname(const QString &hostname);
-    void setPublicKey(const QString &publicKey);
 
     void updateStatus();
 

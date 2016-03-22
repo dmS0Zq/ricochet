@@ -291,11 +291,6 @@ void ContactUser::setNickname(const QString &nickname)
     m_settings->write("nickname", nickname);
 }
 
-void ContactUser::setPublicKey(const QString &publicKey)
-{
-    m_settings->write("publicKey", publicKey);
-}
-
 QString ContactUser::hostname() const
 {
     return m_settings->read("hostname").toString();

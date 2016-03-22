@@ -18,7 +18,6 @@ extend Control.ChannelResult {
 message ContactRequest {
     optional string nickname = 1;
     optional string message_text = 2;
-    optional string public_key = 3;
 }
 
 // Response is the only valid message to send on the channel
@@ -32,6 +31,5 @@ message Response {
     }
 
     required Status status = 1;
-    optional string public_key = 2;
 }
 
