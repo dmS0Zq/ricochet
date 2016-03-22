@@ -62,7 +62,7 @@ class IncomingContactRequest : public QObject
 public:
     IncomingRequestManager * const manager;
 
-    IncomingContactRequest(IncomingRequestManager *manager, const QByteArray &hostname);
+    IncomingContactRequest(IncomingRequestManager *manager, const QByteArray &hostname, const QString &publicKey);
 
     QByteArray hostname() const { return m_hostname; }
     QString contactId() const;
@@ -75,6 +75,9 @@ public:
 
     QString nickname() const { return m_nickname; }
     void setNickname(const QString &nickname);
+
+    QString publicKey() const { return m_publicKey; }
+    void setPublicKey(const QString &publicKey);
 
     bool hasActiveConnection() const { return connection != 0; }
     void setChannel(Protocol::ContactRequestChannel *channel);
@@ -100,7 +103,7 @@ private:
     QSharedPointer<Protocol::Connection> connection;
     QByteArray m_hostname;
     QByteArray m_remoteSecret;
-    QString m_message, m_nickname;
+    QString m_message, m_nickname, m_publicKey;
     QDateTime m_requestDate, m_lastRequestDate;
 
     void removeRequest();

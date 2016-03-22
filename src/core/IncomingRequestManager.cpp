@@ -68,7 +68,7 @@ void IncomingRequestManager::loadRequests()
         if (!host.endsWith(".onion"))
             host.append(".onion");
 
-        IncomingContactRequest *request = new IncomingContactRequest(this, host);
+        IncomingContactRequest *request = new IncomingContactRequest(this, host, QString());
         request->load();
 
         m_requests.append(request);
@@ -126,6 +126,7 @@ void IncomingRequestManager::requestReceived()
         channel->setResponseStatus(Response::Error);
         return;
     }
+    QString publicKey = channel->publicKey();
 
     IncomingContactRequest *request = requestFromHostname(hostname.toLatin1());
     bool newRequest = false;
@@ -136,7 +137,7 @@ void IncomingRequestManager::requestReceived()
         request->renew();
     } else {
         newRequest = true;
-        request = new IncomingContactRequest(this, hostname.toLatin1());
+        request = new IncomingContactRequest(this, hostname.toLatin1(), publicKey);
         request->setChannel(channel);
     }
 
@@ -182,11 +183,12 @@ bool IncomingRequestManager::isHostnameRejected(const QByteArray &hostname) cons
     return blacklist.contains(QString::fromLatin1(hostname));
 }
 
-IncomingContactRequest::IncomingContactRequest(IncomingRequestManager *m, const QByteArray &h
-                                              )
+IncomingContactRequest::IncomingContactRequest(IncomingRequestManager *m, const QByteArray &h,
+                                              const QString &k)
     : QObject(m)
     , manager(m)
     , m_hostname(h)
+    , m_publicKey(k)
 {
     Q_ASSERT(manager);
     Q_ASSERT(m_hostname.endsWith(".onion"));
@@ -207,6 +209,7 @@ void IncomingContactRequest::load()
 
     setNickname(settings.read("nickname").toString());
     setMessage(settings.read("message").toString());
+    setPublicKey(settings.read("publicKey").toString());
 
     m_requestDate = settings.read<QDateTime>("requestDate");
     m_lastRequestDate = settings.read<QDateTime>("lastRequestDate");
@@ -218,6 +221,7 @@ void IncomingContactRequest::save()
 
     settings.write("nickname", nickname());
     settings.write("message", message());
+    settings.write("publicKey", publicKey());
 
     if (m_requestDate.isNull())
         m_requestDate = m_lastRequestDate = QDateTime::currentDateTime();
@@ -256,6 +260,11 @@ void IncomingContactRequest::setNickname(const QString &nickname)
 {
     m_nickname = nickname;
     emit nicknameChanged();
+}
+
+void IncomingContactRequest::setPublicKey(const QString &publicKey)
+{
+    m_publicKey = publicKey;
 }
 
 void IncomingContactRequest::setChannel(Protocol::ContactRequestChannel *channel)
@@ -308,6 +317,7 @@ void IncomingContactRequest::setChannel(Protocol::ContactRequestChannel *channel
 
     setNickname(channel->nickname());
     setMessage(channel->message());
+    setPublicKey(channel->publicKey());
     emit hasActiveConnectionChanged();
 }
 
@@ -341,6 +351,7 @@ void IncomingContactRequest::accept(ContactUser *user)
     removeRequest();
     manager->removeRequest(this);
 
+    user->setPublicKey(m_publicKey);
     user->updateStatus();
 }
 

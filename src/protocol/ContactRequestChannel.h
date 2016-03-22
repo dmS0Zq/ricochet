@@ -51,6 +51,7 @@ public:
 
     QString message() const;
     QString nickname() const;
+    QString publicKey() const;
 
     // Outbound
     void setMessage(const QString &message);
@@ -76,6 +77,7 @@ protected:
 private:
     QString m_nickname;
     QString m_message;
+    QString m_publicKey;
     Status m_responseStatus;
 
     bool handleResponse(const Data::ContactRequest::Response *response);

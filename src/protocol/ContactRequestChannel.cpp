@@ -32,6 +32,8 @@
 
 #include "ContactRequestChannel.h"
 #include "Channel_p.h"
+#include "tor/HiddenService.h"
+#include "utils/Settings.h"
 
 using namespace Protocol;
 
@@ -48,10 +50,19 @@ using namespace Protocol;
  * the peer must not be aware of this in any way.
  */
 
+static QString getMyHiddenServicePublicKey()
+{
+    SettingsObject settings(QStringLiteral("identity"));
+    QString dir = settings.read("dataDirectory", QString::fromLatin1("data-0")).toString();
+    Tor::HiddenService hs(dir);
+    return QString::fromUtf8(hs.cryptoKey().encodedPublicKey(CryptoKey::PEM).toBase64());
+}
+
 ContactRequestChannel::ContactRequestChannel(Direction direction, Connection *connection)
     : Channel(QStringLiteral("im.ricochet.contact.request"), direction, connection)
     , m_responseStatus(Data::ContactRequest::Response::Undefined)
 {
+
 }
 
 QString ContactRequestChannel::message() const
@@ -107,6 +118,11 @@ QString ContactRequestChannel::nickname() const
     return m_nickname;
 }
 
+QString ContactRequestChannel::publicKey() const
+{
+    return m_publicKey;
+}
+
 void ContactRequestChannel::setNickname(const QString &nickname)
 {
     if (direction() != Outbound) {
@@ -136,6 +152,7 @@ bool ContactRequestChannel::allowInboundChannelRequest(const Data::Control::Open
     if (connection()->purpose() == Connection::Purpose::KnownContact) {
         QScopedPointer<Response> response(new Response);
         response->set_status(Response::Accepted);
+        response->set_public_key(getMyHiddenServicePublicKey().toStdString());
         result->SetAllocatedExtension(Data::ContactRequest::response, response.take());
         return false;
     }
@@ -166,9 +183,10 @@ bool ContactRequestChannel::allowInboundChannelRequest(const Data::Control::Open
     }
 
     ContactRequest contactData = request->GetExtension(Data::ContactRequest::contact_request);
+
     QString nickname = QString::fromStdString(contactData.nickname());
     QString message = QString::fromStdString(contactData.message_text());
-
+    QString publicKey = QString::fromStdString(contactData.public_key());
     m_responseStatus = Response::Undefined;
     if (message.size() > Data::ContactRequest::MessageMaxCharacters ||
         !isAcceptableNickname(nickname))
@@ -178,6 +196,8 @@ bool ContactRequestChannel::allowInboundChannelRequest(const Data::Control::Open
     } else {
         m_nickname = nickname;
         m_message = message;
+        m_publicKey = publicKey;
+
         emit requestReceived();
 
         if (m_responseStatus == Response::Undefined) {
@@ -188,6 +208,7 @@ bool ContactRequestChannel::allowInboundChannelRequest(const Data::Control::Open
 
     QScopedPointer<Response> response(new Response);
     response->set_status(m_responseStatus);
+    response->set_public_key(getMyHiddenServicePublicKey().toStdString());
     result->SetAllocatedExtension(Data::ContactRequest::response, response.take());
 
     // If the response is final, close the channel immediately once it's fully open
@@ -216,6 +237,7 @@ void ContactRequestChannel::setResponseStatus(Status status)
     if (isOpened()) {
         Response response;
         response.set_status(m_responseStatus);
+        response.set_public_key(getMyHiddenServicePublicKey().toStdString());
         sendMessage(response);
 
         if (m_responseStatus > Response::Pending)
@@ -243,6 +265,7 @@ bool ContactRequestChannel::allowOutboundChannelRequest(Data::Control::OpenChann
         contactData->set_nickname(m_nickname.toStdString());
     if (!m_message.isEmpty())
         contactData->set_message_text(m_message.toStdString());
+    contactData->set_public_key(getMyHiddenServicePublicKey().toStdString());
 
     request->SetAllocatedExtension(Data::ContactRequest::contact_request, contactData.take());
     return true;
@@ -286,6 +309,7 @@ bool ContactRequestChannel::handleResponse(const Data::ContactRequest::Response 
     }
 
     m_responseStatus = response->status();
+    m_publicKey = QString::fromStdString(response->public_key());
     emit requestStatusChanged(m_responseStatus);
     // If the response is final, close the channel. Use a queued invoke to avoid any potential
     // issue when called from processChannelOpenResult
@@ -294,4 +318,3 @@ bool ContactRequestChannel::handleResponse(const Data::ContactRequest::Response 
 
     return true;
 }
-
