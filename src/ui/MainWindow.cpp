@@ -37,10 +37,12 @@
 #include "core/IdentityManager.h"
 #include "core/ContactIDValidator.h"
 #include "core/ConversationModel.h"
+#include "core/Group.h"
 #include "tor/TorControl.h"
 #include "tor/TorManager.h"
 #include "tor/TorProcess.h"
 #include "ContactsModel.h"
+#include "GroupsModel.h"
 #include "ui/LinkedText.h"
 #include "utils/Settings.h"
 #include "utils/PendingOperation.h"
@@ -112,6 +114,7 @@ MainWindow::MainWindow(QObject *parent)
     qml->setNetworkAccessManagerFactory(new NetworkAccessBlockingFactory);
 
     qmlRegisterUncreatableType<ContactUser>("im.ricochet", 1, 0, "ContactUser", QString());
+    qmlRegisterUncreatableType<Group>("im.ricochet", 1, 0, "Group", QString());
     qmlRegisterUncreatableType<UserIdentity>("im.ricochet", 1, 0, "UserIdentity", QString());
     qmlRegisterUncreatableType<ContactsManager>("im.ricochet", 1, 0, "ContactsManager", QString());
     qmlRegisterUncreatableType<IncomingRequestManager>("im.ricochet", 1, 0, "IncomingRequestManager", QString());
@@ -121,6 +124,7 @@ MainWindow::MainWindow(QObject *parent)
     qmlRegisterUncreatableType<Tor::TorProcess>("im.ricochet", 1, 0, "TorProcess", QString());
     qmlRegisterType<ConversationModel>("im.ricochet", 1, 0, "ConversationModel");
     qmlRegisterType<ContactsModel>("im.ricochet", 1, 0, "ContactsModel");
+    qmlRegisterType<GroupsModel>("im.ricochet", 1, 0, "GroupsModel");
     qmlRegisterType<ContactIDValidator>("im.ricochet", 1, 0, "ContactIDValidator");
     qmlRegisterType<SettingsObject>("im.ricochet", 1, 0, "Settings");
     qmlRegisterSingletonType<LinkedText>("im.ricochet", 1, 0, "LinkedText", linkedtext_singleton);

@@ -85,12 +85,22 @@ ApplicationWindow {
                         }
                     }
                 }
-
                 Loader {
                     id: offlineLoader
                     active: torControl.torStatus !== TorControl.TorReady || (item !== null && item.visible)
                     anchors.fill: parent
                     source: Qt.resolvedUrl("OfflineStateItem.qml")
+                }
+            }
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                GroupList {
+                    id: groupList
+                    anchors.fill: parent
+                    onGroupActivated: {
+                        actions.openWindow()
+                    }
                 }
             }
         }

@@ -36,8 +36,13 @@
         <file>LanguagePreferences.qml</file>
         <file>AudioNotifications.qml</file>
         <file>utils.js</file>
+        <file>GroupList.qml</file>
+        <file>GroupListDelegate.qml</file>
+        <file>GroupActions.qml</file>
+        <file>GroupWindow.js</file>
     </qresource>
     <qresource prefix="/text">
         <file>../../../LICENSE</file>
     </qresource>
+    <qresource prefix="/"/>
 </RCC>

@@ -164,7 +164,9 @@ SOURCES += src/main.cpp \
     src/ui/LinkedText.cpp \
     src/utils/Settings.cpp \
     src/utils/PendingOperation.cpp \
-    src/ui/LanguagesModel.cpp
+    src/ui/LanguagesModel.cpp \
+    src/core/Group.cpp \
+    src/ui/GroupsModel.cpp
 
 HEADERS += src/ui/MainWindow.h \
     src/ui/ContactsModel.h \
@@ -195,7 +197,9 @@ HEADERS += src/ui/MainWindow.h \
     src/ui/LinkedText.h \
     src/utils/Settings.h \
     src/utils/PendingOperation.h \
-    src/ui/LanguagesModel.h
+    src/ui/LanguagesModel.h \
+    src/core/Group.h \
+    src/ui/GroupsModel.h
 
 SOURCES += src/protocol/Channel.cpp \
     src/protocol/ControlChannel.cpp \
@@ -267,3 +271,8 @@ updateqm.CONFIG += no_link target_predeps
 QMAKE_EXTRA_COMPILERS += updateqm
 
 RESOURCES += translation/embedded.qrc
+
+DISTFILES += \
+    src/ui/qml/GroupListDelegate.qml \
+    src/ui/qml/GroupActions.qml \
+    src/ui/qml/GroupWindow.js
