@@ -9,8 +9,8 @@ ScrollView {
     data: [
         GroupsModel {
             id: groupsModel
+            manager: groupManager
         }
-
     ]
     property QtObject selectedGroup
     property ListView view: groupListView

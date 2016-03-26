@@ -12,6 +12,7 @@ ToolBar {
 
     property Action addContact: addContactAction
     property Action preferences: preferencesAction
+    property Action addGroup: addGroupAction
 
     data: [
         Action {
@@ -21,6 +22,14 @@ ToolBar {
                 var object = createDialog("AddContactDialog.qml", { }, window)
                 object.visible = true
             }
+        },
+
+        Action {
+          id: addGroupAction
+          text: qsTr("Add Group")
+          onTriggered: {
+              groupManager.test()
+          }
         },
 
         Action {
@@ -75,6 +84,13 @@ ToolBar {
                     text: qsTr("Click to add contacts")
                 }
             }
+        }
+
+        ToolButton {
+            action: addGroupAction
+            implicitHeight: 24
+            style: iconButtonStyle
+            text: "G"
         }
 
         ToolButton {

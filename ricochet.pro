@@ -166,7 +166,8 @@ SOURCES += src/main.cpp \
     src/utils/PendingOperation.cpp \
     src/ui/LanguagesModel.cpp \
     src/core/Group.cpp \
-    src/ui/GroupsModel.cpp
+    src/ui/GroupsModel.cpp \
+    src/core/GroupManager.cpp
 
 HEADERS += src/ui/MainWindow.h \
     src/ui/ContactsModel.h \
@@ -199,7 +200,8 @@ HEADERS += src/ui/MainWindow.h \
     src/utils/PendingOperation.h \
     src/ui/LanguagesModel.h \
     src/core/Group.h \
-    src/ui/GroupsModel.h
+    src/ui/GroupsModel.h \
+    src/core/GroupManager.h
 
 SOURCES += src/protocol/Channel.cpp \
     src/protocol/ControlChannel.cpp \

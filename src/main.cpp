@@ -32,6 +32,7 @@
 
 #include "ui/MainWindow.h"
 #include "core/IdentityManager.h"
+#include "core/GroupManager.h"
 #include "tor/TorManager.h"
 #include "tor/TorControl.h"
 #include "utils/CryptoKey.h"
@@ -99,6 +100,10 @@ int main(int argc, char *argv[])
     /* Identities */
     identityManager = new IdentityManager;
     QScopedPointer<IdentityManager> scopedIdentityManager(identityManager);
+
+    /* Groups */
+    groupManager = new GroupManager;
+    QScopedPointer<GroupManager> scopedGroupManager(groupManager);
 
     /* Window */
     QScopedPointer<MainWindow> w(new MainWindow);

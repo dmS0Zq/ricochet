@@ -3,6 +3,7 @@
 GroupsModel::GroupsModel(QObject *parent)
     : QAbstractListModel(parent)
 {
+    m_manager = groupManager;
 }
 
 QModelIndex GroupsModel::indexOfGroup(Group *group) const
@@ -27,4 +28,11 @@ QVariant GroupsModel::data(const QModelIndex &index, int role) const
 
     Group *group = groups[index.row()];
     return QVariant();
+}
+
+void GroupsModel::setManager(GroupManager *manager)
+{
+    if (manager == m_manager)
+        return;
+    m_manager = manager;
 }

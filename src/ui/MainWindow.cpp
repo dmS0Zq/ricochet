@@ -117,6 +117,7 @@ MainWindow::MainWindow(QObject *parent)
     qmlRegisterUncreatableType<Group>("im.ricochet", 1, 0, "Group", QString());
     qmlRegisterUncreatableType<UserIdentity>("im.ricochet", 1, 0, "UserIdentity", QString());
     qmlRegisterUncreatableType<ContactsManager>("im.ricochet", 1, 0, "ContactsManager", QString());
+    qmlRegisterUncreatableType<GroupManager>("im.ricochet", 1, 0, "GroupManager", QString());
     qmlRegisterUncreatableType<IncomingRequestManager>("im.ricochet", 1, 0, "IncomingRequestManager", QString());
     qmlRegisterUncreatableType<IncomingContactRequest>("im.ricochet", 1, 0, "IncomingContactRequest", QString());
     qmlRegisterUncreatableType<OutgoingContactRequest>("im.ricochet", 1, 0, "OutgoingContactRequest", QString());
@@ -141,6 +142,7 @@ bool MainWindow::showUI()
 {
     Q_ASSERT(!identityManager->identities().isEmpty());
     qml->rootContext()->setContextProperty(QLatin1String("userIdentity"), identityManager->identities()[0]);
+    qml->rootContext()->setContextProperty(QLatin1String("groupManager"), groupManager);
     qml->rootContext()->setContextProperty(QLatin1String("torControl"), torControl);
     qml->rootContext()->setContextProperty(QLatin1String("torInstance"), Tor::TorManager::instance());
     qml->rootContext()->setContextProperty(QLatin1String("uiMain"), this);
