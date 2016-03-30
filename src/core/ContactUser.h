@@ -104,6 +104,7 @@ public:
     quint16 port() const;
     /* Contact ID in the ricochet: format */
     QString contactID() const;
+    QByteArray publicKey() const;
 
     Status status() const { return m_status; }
 

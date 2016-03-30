@@ -311,6 +311,11 @@ QString ContactUser::contactID() const
     return ContactIDValidator::idFromHostname(hostname());
 }
 
+QByteArray ContactUser::publicKey() const
+{
+    return m_settings->read("publicKey").toString().toUtf8();
+}
+
 void ContactUser::setHostname(const QString &hostname)
 {
     QString fh = hostname;
