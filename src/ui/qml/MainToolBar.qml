@@ -28,7 +28,7 @@ ToolBar {
           id: addGroupAction
           text: qsTr("Add Group")
           onTriggered: {
-              groupManager.test()
+              groupsManager.createGroup("New Group");
           }
         },
 

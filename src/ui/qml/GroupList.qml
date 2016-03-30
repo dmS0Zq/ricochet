@@ -7,9 +7,14 @@ ScrollView {
     id: scroll
 
     data: [
+        Rectangle {
+            anchors.fill: scroll
+            z: -1
+            color: palette.base
+        },
         GroupsModel {
             id: groupsModel
-            manager: groupManager
+            manager: groupsManager
         }
     ]
     property QtObject selectedGroup
@@ -43,6 +48,34 @@ ScrollView {
             }
 
         ]
+        section.property: "name"
+        section.delegate: Row {
+            width: parent.width - x
+            height: label.height + 4
+            x: 8
+            spacing: 6
+            Label {
+                id: label
+                y: 2
+                font.pointSize: styleHelper.pointSize
+                font.bold: true
+                font.capitalization: Font.SmallCaps
+                textFormat: Text.PlainText
+                color: "black"
+                text: "Group Chats"
+            }
+            Rectangle {
+                height: 1
+                width: parent.width - x
+                anchors {
+                    top: label.verticalCenter
+                    topMargin: 1
+                }
+                color: "black"
+                opacity: 0.1
+            }
+        }
+
         delegate: GroupListDelegate { }
     }
 }

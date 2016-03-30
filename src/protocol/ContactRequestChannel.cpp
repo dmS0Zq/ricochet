@@ -55,7 +55,7 @@ static QString getMyHiddenServicePublicKey()
     SettingsObject settings(QStringLiteral("identity"));
     QString dir = settings.read("dataDirectory", QString::fromLatin1("data-0")).toString();
     Tor::HiddenService hs(dir);
-    return QString::fromUtf8(hs.cryptoKey().encodedPublicKey(CryptoKey::PEM).toBase64());
+    return QString::fromUtf8(hs.privateKey().encodedPublicKey(CryptoKey::PEM).toBase64());
 }
 
 ContactRequestChannel::ContactRequestChannel(Direction direction, Connection *connection)

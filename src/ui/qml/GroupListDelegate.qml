@@ -4,7 +4,7 @@ import im.ricochet 1.0
 
 Rectangle {
     id: delegate
-    color: highlighted ? "green" : "white"
+    color: highlighted ? "#c4e7ff" : "white"
     width: parent.width
     height: nameLabel.height + 8
 
@@ -17,6 +17,8 @@ Rectangle {
     Label {
         id: nameLabel
         anchors {
+            left: parent.left
+            right: parent.right
             leftMargin: 6
             rightMargin: 8
             verticalCenter: parent.verticalCenter
@@ -75,8 +77,8 @@ Rectangle {
         TextField {
             id: nameField
             anchors {
-                left: nameLabel.left
-                right: nameLabel.right
+                left: parent.left
+                right: parent.right
                 verticalCenter: nameLabel.verticalCenter
             }
             text: model.group.name
