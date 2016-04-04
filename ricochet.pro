@@ -167,7 +167,8 @@ SOURCES += src/main.cpp \
     src/ui/LanguagesModel.cpp \
     src/core/Group.cpp \
     src/ui/GroupsModel.cpp \
-    src/core/GroupsManager.cpp
+    src/core/GroupsManager.cpp \
+    src/protocol/GroupChatChannel.cpp
 
 HEADERS += src/ui/MainWindow.h \
     src/ui/ContactsModel.h \
@@ -201,7 +202,8 @@ HEADERS += src/ui/MainWindow.h \
     src/ui/LanguagesModel.h \
     src/core/Group.h \
     src/ui/GroupsModel.h \
-    src/core/GroupsManager.h
+    src/core/GroupsManager.h \
+    src/protocol/GroupChatChannel.h
 
 SOURCES += src/protocol/Channel.cpp \
     src/protocol/ControlChannel.cpp \
@@ -225,6 +227,7 @@ include(protobuf.pri)
 PROTOS += src/protocol/ControlChannel.proto \
     src/protocol/AuthHiddenService.proto \
     src/protocol/ChatChannel.proto \
+    src/protocol/GroupChatChannel.proto\
     src/protocol/ContactRequestChannel.proto
 
 # QML
@@ -277,4 +280,4 @@ RESOURCES += translation/embedded.qrc
 DISTFILES += \
     src/ui/qml/GroupListDelegate.qml \
     src/ui/qml/GroupActions.qml \
-    src/ui/qml/GroupWindow.js
+    src/ui/qml/GroupWindow.js \
