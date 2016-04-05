@@ -99,4 +99,5 @@ private:
     void connectSignals(ContactUser *user);
 };
 
+extern ContactsManager *contactsManager;
 #endif // CONTACTSMANAGER_H

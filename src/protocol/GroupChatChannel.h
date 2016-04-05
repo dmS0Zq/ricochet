@@ -16,7 +16,7 @@ public:
     typedef quint32 MessageId;
     static const int MessageMaxCharacters = 2000;
     explicit GroupChatChannel(Direction direction, Connection *connection);
-    bool sendGroupMessage(QString text, QDateTime time, MessageId &id);
+    bool sendGroupMessage(QString text, QDateTime time);
     bool sendGroupMessageWithId(QString text, QDateTime time, MessageId id);
 signals:
     void messageAcknowledged(MessageId id, bool accepted);

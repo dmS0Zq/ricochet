@@ -1,4 +1,5 @@
 #include "GroupsManager.h"
+#include "core/IdentityManager.h"
 
 GroupsManager *groupsManager = 0;
 
@@ -16,6 +17,8 @@ GroupsManager::~GroupsManager()
 void GroupsManager::connectSignals(Group *group)
 {
     //connect(group, SIGNAL(groupDeleted(Group*)), SLOT(groupDeleted(Group*)));
+    connect(contactsManager, SIGNAL(contactAdded(ContactUser*)), group, SLOT(onContactAdded(ContactUser*)));
+    connect(contactsManager, SIGNAL(contactStatusChanged(ContactUser*,int)), group, SLOT(onContactStatusChanged(ContactUser*,int)));
 }
 
 Group *GroupsManager::addGroup(const QString &name)

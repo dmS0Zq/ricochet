@@ -39,6 +39,8 @@
 #include "AuthHiddenServiceChannel.h"
 #include "ChatChannel.h"
 #include "ContactRequestChannel.h"
+#include "GroupInviteChannel.h"
+#include "GroupChatChannel.h"
 
 using namespace Protocol;
 
@@ -53,6 +55,10 @@ Channel *Channel::create(const QString &type, Direction direction, Connection *c
         return new ChatChannel(direction, connection);
     } else if (type == QStringLiteral("im.ricochet.contact.request")) {
         return new ContactRequestChannel(direction, connection);
+    } else if (type == QStringLiteral("im.ricochet.group.invite")) {
+        return new GroupInviteChannel(direction, connection);
+    } else if (type == QStringLiteral("im.ricochet.group.chat")) {
+        return new GroupChatChannel(direction, connection);
     } else {
         return 0;
     }

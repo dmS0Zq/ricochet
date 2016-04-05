@@ -168,7 +168,8 @@ SOURCES += src/main.cpp \
     src/core/Group.cpp \
     src/ui/GroupsModel.cpp \
     src/core/GroupsManager.cpp \
-    src/protocol/GroupChatChannel.cpp
+    src/protocol/GroupChatChannel.cpp \
+    src/protocol/GroupInviteChannel.cpp
 
 HEADERS += src/ui/MainWindow.h \
     src/ui/ContactsModel.h \
@@ -203,7 +204,8 @@ HEADERS += src/ui/MainWindow.h \
     src/core/Group.h \
     src/ui/GroupsModel.h \
     src/core/GroupsManager.h \
-    src/protocol/GroupChatChannel.h
+    src/protocol/GroupChatChannel.h \
+    src/protocol/GroupInviteChannel.h
 
 SOURCES += src/protocol/Channel.cpp \
     src/protocol/ControlChannel.cpp \
@@ -228,6 +230,7 @@ PROTOS += src/protocol/ControlChannel.proto \
     src/protocol/AuthHiddenService.proto \
     src/protocol/ChatChannel.proto \
     src/protocol/GroupChatChannel.proto\
+    src/protocol/GroupInviteChannel.proto \
     src/protocol/ContactRequestChannel.proto
 
 # QML
@@ -277,7 +280,3 @@ QMAKE_EXTRA_COMPILERS += updateqm
 
 RESOURCES += translation/embedded.qrc
 
-DISTFILES += \
-    src/ui/qml/GroupListDelegate.qml \
-    src/ui/qml/GroupActions.qml \
-    src/ui/qml/GroupWindow.js \

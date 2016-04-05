@@ -33,11 +33,19 @@ void GroupChatChannel::receivePacket(const QByteArray &packet)
         return;
     }
     qDebug() << "GroupChatChannel::receivePacket got a packet";
+    if (message.has_group_message())
+        handleGroupMessage(message.group_message());
+    else if (message.has_group_message_acknowledge())
+        handleGroupAcknowledge(message.group_message_acknowledge());
+    else {
+        qWarning() << "Unrecognized message on" << type();
+        closeChannel();
+    }
 }
 
-bool GroupChatChannel::sendGroupMessage(QString text, QDateTime time, MessageId &id)
+bool GroupChatChannel::sendGroupMessage(QString text, QDateTime time)
 {
-    id = ++lastMessageId;
+    MessageId id = ++lastMessageId;
     return sendGroupMessageWithId(text, time, id);
 }
 

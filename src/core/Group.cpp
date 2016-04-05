@@ -1,4 +1,6 @@
 #include "Group.h"
+#include "protocol/ControlChannel.h"
+#include "protocol/GroupChatChannel.h"
 #include <QCryptographicHash>
 #include <QDebug>
 
@@ -6,10 +8,34 @@ Group::Group(int id, QObject *parent)
     : QObject(parent)
     , m_uniqueID(id)
     , m_settings(0)
+    , m_state(State::Unknown)
 {
     Q_ASSERT(m_uniqueID >= 0);
     m_settings = new SettingsObject(QStringLiteral("groups.%1").arg(m_uniqueID));
     connect(m_settings, &SettingsObject::modified, this, &Group::onSettingsModified);
+}
+
+void Group::onContactAdded(ContactUser *user)
+{
+    qDebug() << name() << " knows about new contact";
+}
+
+void Group::onContactStatusChanged(ContactUser *user, int status)
+{
+    qDebug() << name() << " knows about status change";
+    if (status == ContactUser::Status::Online)
+    {
+        if (!m_groupMembers.contains(user->contactID()))
+        {
+            Protocol::GroupChatChannel *channel = new Protocol::GroupChatChannel(Protocol::Channel::Outbound, user->connection().data());
+            user->connection()->findChannel<Protocol::ControlChannel>()->sendOpenChannel(channel);
+            user->connection()->findChannel<Protocol::GroupChatChannel>()->sendGroupMessage(QString::fromStdString("Hi"), QDateTime());
+        }
+    }
+    else
+    {
+        qDebug() << user->nickname() << " went away or something is wrong";
+    }
 }
 
 void Group::onSettingsModified(const QString &key, const QJsonValue &value)
