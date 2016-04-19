@@ -127,6 +127,21 @@ void ContactsManager::contactDeleted(ContactUser *user)
     pContacts.removeOne(user);
 }
 
+ContactUser *ContactsManager::contactUserFromChannel(const Protocol::Channel *channel)
+{
+    for (auto contact = pContacts.begin(); contact != pContacts.end(); contact++) {
+        auto channels = (*contact)->connection()->channels();
+        for (auto chan = channels.begin(); chan != channels.end(); chan++) {
+            if ((*chan) == channel) {
+                qDebug() << (*contact)->nickname() << "is on channel" << channel;
+                return (*contact);
+            }
+        }
+    }
+    qDebug() << "No contact owns" << channel;
+    return nullptr;
+}
+
 ContactUser *ContactsManager::lookupSecret(const QByteArray &secret) const
 {
     Q_ASSERT(secret.size() == 16);

@@ -291,6 +291,12 @@ void ContactUser::setNickname(const QString &nickname)
     m_settings->write("nickname", nickname);
 }
 
+void ContactUser::setPublicKey(const CryptoKey &publicKey)
+{
+    m_publicKey = publicKey;
+    m_settings->write("publicKey", QString::fromStdString(publicKey.encodedPublicKey(CryptoKey::DER).toStdString()));
+}
+
 QString ContactUser::hostname() const
 {
     return m_settings->read("hostname").toString();
@@ -306,9 +312,9 @@ QString ContactUser::contactID() const
     return ContactIDValidator::idFromHostname(hostname());
 }
 
-QByteArray ContactUser::publicKey() const
+CryptoKey ContactUser::publicKey() const
 {
-    return m_settings->read("publicKey").toString().toUtf8();
+    return m_publicKey;
 }
 
 void ContactUser::setHostname(const QString &hostname)

@@ -2,8 +2,11 @@
 #define GROUP_H
 
 #include "ContactUser.h"
+#include "protocol/GroupChatChannel.pb.h"
+#include "protocol/GroupInviteChannel.pb.h"
+#include "utils/CryptoKey.h"
 #include <QObject>
-#include <QMap>
+#include <QHash>
 
 class Group : public QObject
 {
@@ -22,13 +25,26 @@ public:
         Rebalance,
         Unknown
     };
+    struct GroupMember
+    {
+        QString ricochetId;
+        CryptoKey key;
+        QList<QByteArray> seeds;
+        QList<QByteArray> seedHashes;
+        QByteArray position;
+        QSharedPointer<Protocol::Connection> connection;
+    };
     Group(int id, QObject *parent = 0);
     QList<QByteArray> seeds() const { return m_seeds; }
     QList<QByteArray> seedHashes() const;
     QString name() const;
-    SettingsObject *settings() { return m_settings; }
+    UserIdentity *selfIdentity() const { return m_selfIdentity; }
     void setName(const QString &name);
+    void setSelfIdentity(UserIdentity *identity);
     int uniqueID() const { return m_uniqueID; }
+    bool verifyMessage(const Protocol::Data::GroupChat::GroupMessage &message);
+    void addGroupMember(GroupMember *member);
+    bool verifyPacket(const Protocol::Data::GroupInvite::Invite &packet);
 signals:
     void nameChanged();
     void stateChanged(State oldState, State newState);
@@ -37,19 +53,14 @@ private slots:
     void onContactStatusChanged(ContactUser *user, int status);
     void onSettingsModified(const QString &key, const QJsonValue &value);
 private:
-
-    struct GroupMember
-    {
-        ContactUser *contactUser;
-        QList<QByteArray> seeds;
-        QList<QByteArray> seedHashes;
-        QByteArray position;
-    };
-    QMap<QString, GroupMember> m_groupMembers;
+    QHash<QString, GroupMember*> m_groupMembers;
     QList<QByteArray> m_seeds;
     int m_uniqueID;
-    SettingsObject *m_settings;
     Group::State m_state;
+    QString m_name;
+    UserIdentity *m_selfIdentity;
+
+    QByteArray signData(const QByteArray &data);
 
     /* See GroupsManager::addGroup */
     static Group *addNewGroup(int id);

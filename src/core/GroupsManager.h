@@ -11,7 +11,6 @@ class GroupsManager : public QObject
     Q_DISABLE_COPY(GroupsManager)
 
 public:
-    Q_INVOKABLE void test() { qDebug() << "TEST TEST TEST"; }
     QList<Group*> groups;
     explicit GroupsManager(QObject *parent = 0);
     ~GroupsManager();
@@ -24,6 +23,8 @@ signals:
 private:
     int highestID;
     void connectSignals(Group *group);
+
+    void addSelfToGroup(Group *group);
 };
 
 Q_DECLARE_METATYPE(GroupsManager*)

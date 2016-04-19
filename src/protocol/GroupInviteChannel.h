@@ -3,6 +3,8 @@
 
 #include "Channel.h"
 #include "GroupInviteChannel.pb.h"
+#include "core/Group.h"
+#include "core/GroupsManager.h"
 #include <QDateTime>
 #include <QSet>
 
@@ -13,19 +15,11 @@ class GroupInviteChannel : public Channel
     Q_OBJECT
     Q_DISABLE_COPY(GroupInviteChannel)
 public:
-    enum InviteStatus
-    {
-        Incomplete,
-        Sent,
-        Accepted,
-        Rejected,
-    };
-
     static const int MessageMaxCharacters = 2000;
     explicit GroupInviteChannel(Direction direction, Connection *connection);
-    bool sendInvite(QString text, QDateTime time);
+    bool sendInvite(QString text, QDateTime time, QByteArray signature, QString author, QByteArray publicKey);
 signals:
-    void responseReceived(GroupInviteChannel::InviteStatus status);
+    void invitePacketReceived(const Protocol::Data::GroupInvite::Packet &packet);
 protected:
     virtual bool allowInboundChannelRequest(const Data::Control::OpenChannel *request, Data::Control::ChannelResult *result);
     virtual bool allowOutboundChannelRequest(Data::Control::OpenChannel *request);
@@ -33,7 +27,6 @@ protected:
 private:
     void handleInvite(const Data::GroupInvite::Invite &invite);
     void handleInviteResponse(const Data::GroupInvite::InviteResponse &response);
-    InviteStatus m_inviteStatus;
 };
 }
 #endif

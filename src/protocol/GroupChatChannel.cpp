@@ -1,7 +1,11 @@
 #include "GroupChatChannel.h"
 #include "Channel_p.h"
+#include "core/Group.h"
+#include "core/UserIdentity.h"
+#include "tor/HiddenService.h"
 #include "utils/SecureRNG.h"
 #include "utils/Useful.h"
+#include "utils/CryptoKey.h"
 #include <QDebug>
 
 using namespace Protocol;
@@ -66,6 +70,7 @@ bool GroupChatChannel::sendGroupMessageWithId(QString text, QDateTime time, Mess
     }
     // Also converts to UTF-8
     message->set_message_text(text.toStdString());
+
     if (!time.isNull())
         message->set_timestamp(time.toMSecsSinceEpoch());
     Data::GroupChat::Packet packet;
@@ -90,6 +95,12 @@ void GroupChatChannel::handleGroupMessage(const Data::GroupChat::GroupMessage &m
         response->set_accepted(false);
     } else if (text.size() > MessageMaxCharacters) {
         qWarning() << "Rejected oversize group chat message of " << text.size() << "chars";
+        response->set_accepted(false);
+    } else if (!message.has_signature()) {
+        qWarning() << "Rejected group chat message without signature";
+        response->set_accepted(false);
+    } else if (!message.has_author()) {
+        qWarning() << "Rejected group chat message without author";
         response->set_accepted(false);
     } else {
         QDateTime time = QDateTime::fromMSecsSinceEpoch(message.timestamp());

@@ -1,5 +1,7 @@
 #include "GroupsManager.h"
+#include "core/ContactsManager.h"
 #include "core/IdentityManager.h"
+#include "tor/HiddenService.h"
 
 GroupsManager *groupsManager = 0;
 
@@ -28,6 +30,7 @@ Group *GroupsManager::addGroup(const QString &name)
     Group *group = Group::addNewGroup(highestID);
     group->setParent(this);
     group->setName(name);
+    addSelfToGroup(group);
     connectSignals(group);
 
     qDebug() << "Added new group " << group->name() << " with ID " << group->m_uniqueID;
@@ -48,4 +51,19 @@ Group *GroupsManager::createGroup(const QString &groupName)
     emit groupAdded(group);
     qDebug() << "Created new group" << group->name();
     return group;
+}
+
+void GroupsManager::addSelfToGroup(Group *group)
+{
+    Group::GroupMember *member = new Group::GroupMember();
+    UserIdentity *self = identityManager->identities().at(0); // assume 1 identity
+    qDebug() << "GroupsManager::addSelfToGroup - self is" << self;
+    QByteArray privateKey = self->hiddenService()->privateKey().encodedPrivateKey(CryptoKey::PEM);
+    CryptoKey key;
+    key.loadFromData(privateKey, CryptoKey::PrivateKey);
+    qDebug() << "GroupsManager::addSelfToGroup - key is" << key.torServiceID();
+    member->ricochetId = self->contactID();
+    member->key = key;
+    group->addGroupMember(member);
+    group->setSelfIdentity(self);
 }

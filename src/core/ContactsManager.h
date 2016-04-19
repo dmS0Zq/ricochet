@@ -66,6 +66,8 @@ public:
     ContactUser *lookupNickname(const QString &nickname) const;
     ContactUser *lookupUniqueID(int uniqueID) const;
 
+    ContactUser *contactUserFromChannel(const Protocol::Channel *channel);
+
     /* Create a new user and a contact request for that user. Use this instead of addContact.
      * Note that contactID should be an ricochet: ID. */
     Q_INVOKABLE ContactUser *createContactRequest(const QString &contactID, const QString &nickname,

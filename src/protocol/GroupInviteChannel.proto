@@ -9,6 +9,8 @@ message Invite {
     optional bytes signature = 1;
     optional int64 timestamp = 2;
     optional string message_text = 3;
+    optional string author = 4;
+    optional bytes public_key = 5;
 }
 
 message InviteResponse {

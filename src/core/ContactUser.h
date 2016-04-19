@@ -40,6 +40,7 @@
 #include <QSharedPointer>
 #include "utils/Settings.h"
 #include "protocol/Connection.h"
+#include "utils/CryptoKey.h"
 
 class UserIdentity;
 class OutgoingContactRequest;
@@ -104,7 +105,7 @@ public:
     quint16 port() const;
     /* Contact ID in the ricochet: format */
     QString contactID() const;
-    QByteArray publicKey() const;
+    CryptoKey publicKey() const;
 
     Status status() const { return m_status; }
 
@@ -131,6 +132,7 @@ public slots:
 
     void setNickname(const QString &nickname);
     void setHostname(const QString &hostname);
+    void setPublicKey(const CryptoKey &publicKey);
 
     void updateStatus();
 
@@ -159,6 +161,7 @@ private:
     OutgoingContactRequest *m_contactRequest;
     SettingsObject *m_settings;
     ConversationModel *m_conversation;
+    CryptoKey m_publicKey;
 
     /* See ContactsManager::addContact */
     static ContactUser *addNewContact(UserIdentity *identity, int id);
