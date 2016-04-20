@@ -40,6 +40,7 @@
         <file>GroupListDelegate.qml</file>
         <file>GroupActions.qml</file>
         <file>GroupWindow.js</file>
+        <file>GroupChatWindow.qml</file>
     </qresource>
     <qresource prefix="/text">
         <file>../../../LICENSE</file>

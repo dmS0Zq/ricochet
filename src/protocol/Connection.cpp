@@ -515,6 +515,7 @@ bool ConnectionPrivate::isValidAvailableChannelId(int id, Connection::Direction 
 
 bool ConnectionPrivate::insertChannel(Channel *channel)
 {
+    //qDebug() << "Inserting channel with direction" << channel->direction() << "and type" << channel->type();
     if (channel->connection() != q) {
         BUG() << "Connection tried to insert a channel assigned to a different connection";
         return false;

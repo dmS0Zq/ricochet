@@ -2,6 +2,7 @@
 #define GROUPSMANAGER_H
 
 #include "Group.h"
+#include "protocol/Channel.h"
 #include <QObject>
 #include <QDebug>
 
@@ -18,6 +19,7 @@ public:
     /* Use this instead of addGroup */
     Q_INVOKABLE Group *createGroup(const QString &groupName);
     Group *addGroup(const QString &name);
+    Group *groupFromChannel(const Protocol::Channel *channel);
 signals:
     void groupAdded(Group *group);
 private:

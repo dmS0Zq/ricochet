@@ -17,7 +17,7 @@ class GroupInviteChannel : public Channel
 public:
     static const int MessageMaxCharacters = 2000;
     explicit GroupInviteChannel(Direction direction, Connection *connection);
-    bool sendInvite(QString text, QDateTime time, QByteArray signature, QString author, QByteArray publicKey);
+    bool sendInvite(const Group::GroupInvite &invite);
 signals:
     void invitePacketReceived(const Protocol::Data::GroupInvite::Packet &packet);
 protected:

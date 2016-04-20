@@ -3,6 +3,7 @@
 
 #include "Channel.h"
 #include "GroupChatChannel.pb.h"
+#include "core/Group.h"
 #include <QDateTime>
 #include <QSet>
 
@@ -16,8 +17,8 @@ public:
     typedef quint32 MessageId;
     static const int MessageMaxCharacters = 2000;
     explicit GroupChatChannel(Direction direction, Connection *connection);
-    bool sendGroupMessage(QString text, QDateTime time);
-    bool sendGroupMessageWithId(QString text, QDateTime time, MessageId id);
+    bool sendGroupMessage(const Group::GroupMessage &message);
+    bool sendGroupMessageWithId(const Group::GroupMessage &message, MessageId id);
 signals:
     void messageAcknowledged(MessageId id, bool accepted);
     void messageReceived(const QString &text, const QDateTime &time, MessageId id);

@@ -23,6 +23,7 @@ public:
     Q_INVOKABLE QModelIndex indexOfGroup(Group *group) const;
     Q_INVOKABLE int rowOfGroup(Group *group) const { return indexOfGroup(group).row(); }
     Q_INVOKABLE Group *group(int row) const;
+    Q_INVOKABLE void testSendMessage(Group *group) const;
 
     virtual int rowCount(const QModelIndex &parent = QModelIndex()) const;
     virtual QHash<int,QByteArray> roleNames() const;

@@ -132,3 +132,9 @@ void GroupsModel::groupAdded(Group *group)
     m_groups.insert(lp, group);
     endInsertRows();
 }
+
+
+void GroupsModel::testSendMessage(Group *group) const
+{
+    group->testSendMessage();
+}

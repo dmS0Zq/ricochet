@@ -36,6 +36,7 @@
 #include <QObject>
 #include <QHash>
 #include "Channel.h"
+#include <QDebug>
 
 class QTcpSocket;
 
@@ -217,6 +218,7 @@ template<typename T> T *Connection::findChannel(Channel::Direction direction)
 {
     T *re = 0;
     foreach (Channel *c, channels()) {
+        //qDebug() << "Checking out" << c->type() << "direction" << c->direction() << "id" << c->identifier();
         if (direction != Channel::Invalid && c->direction() != direction)
             continue;
         if ((re = qobject_cast<T*>(c)))

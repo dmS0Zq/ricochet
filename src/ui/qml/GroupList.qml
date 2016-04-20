@@ -4,11 +4,11 @@ import QtQuick.Layouts 1.0
 import im.ricochet 1.0
 
 ScrollView {
-    id: scroll
+    id: groupScroll
 
     data: [
         Rectangle {
-            anchors.fill: scroll
+            anchors.fill: groupScroll
             z: -1
             color: palette.base
         },
@@ -17,16 +17,21 @@ ScrollView {
             manager: groupsManager
         }
     ]
+
     property QtObject selectedGroup
     property ListView view: groupListView
 
     // Emitted for double click on group
     signal groupActivated(Group group, Item actions)
+    signal selectedContactChanged(ContactUser contact)
 
     onSelectedGroupChanged: {
         if (selectedGroup !== groupsModel.group(groupListView.currentIndex)) {
             groupListView.currentIndex = groupsModel.rowOfGroup(selectedGroup)
         }
+    }
+    onSelectedContactChanged: {
+        groupListView.currentIndex = -1
     }
 
     ListView {
@@ -35,11 +40,14 @@ ScrollView {
         currentIndex: -1
 
         signal groupActivated(Group group, Item actions)
-        onGroupActivated: scroll.groupActivated(group, actions)
+        onGroupActivated: groupScroll.groupActivated(group, actions)
+
         onCurrentIndexChanged: {
             // Not using a binding to allow writes to selectedGroup
-            scroll.selectedGroup = groupsModel.group(groupListView.currentIndex)
+            groupScroll.selectedGroup = groupsModel.group(groupListView.currentIndex)
+            contactList.selectedGroupChanged(groupsModel.group(groupListView.currentIndex))
         }
+
         data: [
             MouseArea {
                 anchors.fill: parent

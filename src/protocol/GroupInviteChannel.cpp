@@ -38,13 +38,14 @@ void GroupInviteChannel::receivePacket(const QByteArray &packet)
     emit invitePacketReceived(message);
 }
 
-bool GroupInviteChannel::sendInvite(QString text, QDateTime time, QByteArray signature, QString author, QByteArray publicKey)
+bool GroupInviteChannel::sendInvite(const Group::GroupInvite &invite)
 {
     if (direction() != Outbound) {
         BUG() << "Group invite channels are unidirectional and this is not an outbound channel";
         return false;
     }
     QScopedPointer<Data::GroupInvite::Invite> message(new Data::GroupInvite::Invite);
+    QString text = invite.message;
     if (text.isEmpty()) {
         BUG() << "Invite message is empty, and it should've been discarded";
         return false;
@@ -54,11 +55,10 @@ bool GroupInviteChannel::sendInvite(QString text, QDateTime time, QByteArray sig
     }
     // Also converts to UTF-8
     message->set_message_text(text.toStdString());
-    message->set_author(author.toStdString());
-    if (!time.isNull())
-        message->set_timestamp(time.toMSecsSinceEpoch());
-    message->set_signature(signature.constData(), signature.size());
-    message->set_public_key(publicKey.constData(), publicKey.size());
+    message->set_author(invite.author.toStdString());
+    message->set_signature(invite.signature.constData(), invite.signature.size());
+    message->set_public_key(invite.publicKey.constData(), invite.publicKey.size());
+    message->set_timestamp(invite.timestamp.toMSecsSinceEpoch());
     Data::GroupInvite::Packet packet;
     packet.set_allocated_invite(message.take());
     if (!Channel::sendMessage(packet))
@@ -102,16 +102,14 @@ void GroupInviteChannel::handleInvite(const Data::GroupInvite::Invite &invite)
         return;
     }
     // add other user to group
-    Group::GroupMember *member = new Group::GroupMember();
-    member->connection = QSharedPointer<Protocol::Connection>(this->connection());
-    member->key = user->publicKey();
-    member->ricochetId = user->contactID();
+    Group::GroupMember *member = new Group::GroupMember(user);
     group->addGroupMember(member);
     // verify that the signature on the pcaket is good
     if (!group->verifyPacket(invite)) {
         qDebug() << "GroupInviteChannel::handleInvite: packet did not verify";
         return;
     }
+    qDebug() << "GroupInviteChannel::handleInvite: packet did verify";
     QByteArray myPublicKey;
     UserIdentity *self = identityManager->identities().at(0); // assume 1 identity
     myPublicKey = self->hiddenService()->privateKey().encodedPublicKey(CryptoKey::DER);

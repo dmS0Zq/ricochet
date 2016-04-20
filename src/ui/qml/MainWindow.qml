@@ -76,7 +76,6 @@ ApplicationWindow {
                     id: contactList
                     anchors.fill: parent
                     opacity: offlineLoader.item !== null ? (1 - offlineLoader.item.opacity) : 1
-
                     onContactActivated: {
                         if (contact.status === ContactUser.RequestPending || contact.status === ContactUser.RequestRejected) {
                             actions.openPreferences()

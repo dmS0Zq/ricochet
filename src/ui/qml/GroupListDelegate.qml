@@ -54,6 +54,7 @@ Rectangle {
             if (mouse.button === Qt.LeftButton) {
                 groupListView.groupActivated(model.group, contextMenu)
             }
+            groupsModel.testSendMessage(model.group)
         }
     }
 

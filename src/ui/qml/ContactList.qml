@@ -4,11 +4,11 @@ import QtQuick.Layouts 1.0
 import im.ricochet 1.0
 
 ScrollView {
-    id: scroll
+    id: contactScroll
 
     data: [
         Rectangle {
-            anchors.fill: scroll
+            anchors.fill: contactScroll
             z: -1
             color: palette.base
         },
@@ -23,11 +23,15 @@ ScrollView {
 
     // Emitted for double click on a contact
     signal contactActivated(ContactUser contact, Item actions)
+    signal selectedGroupChanged(Group group)
 
     onSelectedContactChanged: {
         if (selectedContact !== contactsModel.contact(contactListView.currentIndex)) {
             contactListView.currentIndex = contactsModel.rowOfContact(selectedContact)
         }
+    }
+    onSelectedGroupChanged: {
+        contactListView.currentIndex = -1
     }
 
     ListView {
@@ -36,11 +40,11 @@ ScrollView {
         currentIndex: -1
 
         signal contactActivated(ContactUser contact, Item actions)
-        onContactActivated: scroll.contactActivated(contact, actions)
+        onContactActivated: contactScroll.contactActivated(contact, actions)
 
         onCurrentIndexChanged: {
             // Not using a binding to allow writes to selectedContact
-            scroll.selectedContact = contactsModel.contact(contactListView.currentIndex)
+            contactScroll.selectedContact = contactsModel.contact(contactListView.currentIndex)
         }
 
         data: [
@@ -98,3 +102,5 @@ ScrollView {
         delegate: ContactListDelegate { }
     }
 }
+
+

@@ -52,6 +52,7 @@ ControlChannel::ControlChannel(Direction direction, Connection *connection)
 
 bool ControlChannel::sendOpenChannel(Channel *channel)
 {
+    //qDebug() << "ControlChannel::sendOpenChannel for" << channel->type() << channel->identifier();
     if (channel->isOpened() || channel->direction() != Outbound || channel->identifier() >= 0) {
         BUG() << "openChannel called for a" << channel->type() << "channel in an unexpected state";
         return false;
@@ -213,6 +214,8 @@ void ControlChannel::handleOpenChannel(const Data::Control::OpenChannel &message
     Data::Control::Packet responseMessage;
     responseMessage.set_allocated_channel_result(response);
     sendMessage(responseMessage);
+
+    qDebug() << "OpenChannel for " << channel->type() << channel->identifier();
 
     if (response->opened())
         emit connection()->channelOpened(channel);

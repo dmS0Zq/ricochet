@@ -55,15 +55,25 @@ Group *GroupsManager::createGroup(const QString &groupName)
 
 void GroupsManager::addSelfToGroup(Group *group)
 {
-    Group::GroupMember *member = new Group::GroupMember();
+    Group::GroupMember *member = new Group::GroupMember(identityManager->identities().at(0)); // assume 1 identity
     UserIdentity *self = identityManager->identities().at(0); // assume 1 identity
-    qDebug() << "GroupsManager::addSelfToGroup - self is" << self;
     QByteArray privateKey = self->hiddenService()->privateKey().encodedPrivateKey(CryptoKey::PEM);
-    CryptoKey key;
-    key.loadFromData(privateKey, CryptoKey::PrivateKey);
-    qDebug() << "GroupsManager::addSelfToGroup - key is" << key.torServiceID();
-    member->ricochetId = self->contactID();
-    member->key = key;
     group->addGroupMember(member);
     group->setSelfIdentity(self);
+}
+
+Group *GroupsManager::groupFromChannel(const Protocol::Channel *channel)
+{
+    for (auto group = groups.begin(); group != groups.end(); group++) {
+        auto members = (*group)->groupMembers();
+        for (auto member = members.begin(); member != members.end(); member++) {
+            auto channels = (*member)->channels();
+            for (auto chan = channels.begin(); chan != channels.end(); chan++) {
+                if ((*chan) == channel) {
+                    return (*group);
+                }
+            }
+        }
+    }
+    return nullptr;
 }

@@ -122,7 +122,6 @@ bool Channel::openChannel()
 {
     Q_D(Channel);
     if (direction() != Channel::Outbound || isOpened() || identifier() >= 0) {
-        BUG() << "Cannot send request to open" << type() << "channel in an incorrect state";
         if (isOpened())
             closeChannel();
         d->invalidate();

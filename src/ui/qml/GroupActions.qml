@@ -9,9 +9,9 @@ Item {
     property QtObject group
 
     function openWindow() {
-        var window = GroupWindow.getWindow(group)
-        window.raise()
-        window.requestActivate()
+        //var window = GroupWindow.getWindow(group)
+        //window.raise()
+        //window.requestActivate()
     }
 
     function removeGroup() {
