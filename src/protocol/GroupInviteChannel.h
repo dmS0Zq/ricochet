@@ -17,7 +17,7 @@ class GroupInviteChannel : public Channel
 public:
     static const int MessageMaxCharacters = 2000;
     explicit GroupInviteChannel(Direction direction, Connection *connection);
-    bool sendInvite(const Group::GroupInvite &invite);
+    bool sendInvite(Protocol::Data::GroupInvite::Invite *invite);
 signals:
     void invitePacketReceived(const Protocol::Data::GroupInvite::Packet &packet);
 protected:

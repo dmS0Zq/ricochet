@@ -62,6 +62,13 @@ ContactUser::ContactUser(UserIdentity *ident, int id, QObject *parent)
     m_settings = new SettingsObject(QStringLiteral("contacts.%1").arg(uniqueID));
     connect(m_settings, &SettingsObject::modified, this, &ContactUser::onSettingsModified);
 
+    QString keyString = m_settings->read("publicKey").toString();
+    QByteArray keyData = QByteArray::fromBase64(keyString.toUtf8());
+    CryptoKey key;
+    if (key.loadFromData(keyData, CryptoKey::PublicKey, CryptoKey::DER)) {
+        setPublicKey(key);
+    }
+
     m_conversation = new ConversationModel(this);
     m_conversation->setContact(this);
 
@@ -294,7 +301,7 @@ void ContactUser::setNickname(const QString &nickname)
 void ContactUser::setPublicKey(const CryptoKey &publicKey)
 {
     m_publicKey = publicKey;
-    m_settings->write("publicKey", QString::fromStdString(publicKey.encodedPublicKey(CryptoKey::DER).toStdString()));
+    m_settings->write("publicKey", QString::fromStdString(publicKey.encodedPublicKey(CryptoKey::DER).toBase64().toStdString()));
 }
 
 QString ContactUser::hostname() const

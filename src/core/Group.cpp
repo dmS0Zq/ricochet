@@ -21,11 +21,15 @@ void Group::onContactAdded(ContactUser *user)
 
 void Group::testSendMessage()
 {
-    GroupMessage chatMessage;
-    chatMessage.author = m_selfIdentity->contactID();
-    chatMessage.message = QString::fromStdString("Ayy lmao");
-    chatMessage.timestamp = QDateTime::currentDateTimeUtc();
-    chatMessage.signature = signData(chatMessage.message.toUtf8() + chatMessage.timestamp.toString().toUtf8());
+    Protocol::Data::GroupChat::GroupMessage *chatMessage = new Protocol::Data::GroupChat::GroupMessage();
+    QString author = selfIdentity()->contactID();
+    QString text = QString::fromStdString("Ayy LMAO");
+    QDateTime timestamp = QDateTime::currentDateTimeUtc();
+    chatMessage->set_author(author.toStdString());
+    chatMessage->set_message_text(text.toStdString());
+    chatMessage->set_timestamp(timestamp.toMSecsSinceEpoch());
+    QByteArray sig = signData(text.toUtf8() + timestamp.toString().toUtf8());
+    chatMessage->set_signature(sig.constData(), sig.size());
     foreach (auto member, m_groupMembers)
     {
         member->sendMessage(chatMessage);
@@ -41,12 +45,16 @@ void Group::onContactStatusChanged(ContactUser *user, int status)
         {
             GroupMember *member = new GroupMember(user);
             addGroupMember(member);
-            GroupInvite invite;
-            invite.author = m_selfIdentity->contactID();
-            invite.message = QString::fromStdString("Hi. Plz join.");
-            invite.timestamp = QDateTime::currentDateTimeUtc();
-            invite.signature = signData(invite.message.toUtf8() + invite.timestamp.toString().toUtf8());
-            invite.publicKey = m_selfIdentity->hiddenService()->privateKey().encodedPublicKey(CryptoKey::DER);
+            Protocol::Data::GroupInvite::Invite *invite = new Protocol::Data::GroupInvite::Invite();
+            QString message = QString::fromStdString("Hi. Plz join");
+            QDateTime timestamp = QDateTime::currentDateTimeUtc();
+            invite->set_author(selfIdentity()->contactID().toStdString());
+            invite->set_message_text(message.toStdString());
+            invite->set_timestamp(timestamp.toMSecsSinceEpoch());
+            QByteArray sig = signData(message.toUtf8() + timestamp.toString().toUtf8());
+            invite->set_signature(sig.constData(), sig.size());
+            QByteArray publicKey = selfIdentity()->hiddenService()->privateKey().encodedPublicKey(CryptoKey::DER);
+            invite->set_public_key(publicKey.constData(), publicKey.size());
             member->sendInvite(invite);
         }
     }
@@ -68,27 +76,9 @@ QString Group::name() const
     return m_name;
 }
 
-//QList<QByteArray> Group::seedHashes() const
-//{
-//    QCryptographicHash hash(QCryptographicHash::Sha256);
-//    QList<QByteArray> seedHashes;
-//    foreach (QByteArray seed, m_seeds)
-//    {
-//        hash.addData(seed);
-//        seedHashes.append(hash.result());
-//        hash.reset();
-//    }
-//    return seedHashes;
-//}
-
 void Group::setName(const QString &name)
 {
     m_name = name;
-}
-
-void Group::setSelfIdentity(UserIdentity *identity)
-{
-    m_selfIdentity = identity;
 }
 
 void Group::addGroupMember(GroupMember *member)
@@ -105,22 +95,31 @@ void Group::addGroupMember(GroupMember *member)
 
 QByteArray Group::signData(const QByteArray &data)
 {
-    return m_groupMembers[m_selfIdentity->contactID()]->key().signData(data);
+    return m_groupMembers[selfIdentity()->contactID()]->key().signData(data);
 }
 
 Group *Group::addNewGroup(int id)
 {
     Group *group = new Group(id);
-    group->setSelfIdentity(identityManager->identities().at(0)); // Assumes only one identity
     group->setName(QString());
     return group;
 }
 
 bool Group::verifyPacket(const Protocol::Data::GroupInvite::Invite &packet)
 {
-    if (!packet.has_message_text() || !packet.has_signature() || !packet.has_timestamp() || !packet.has_author()) {
+    if (!packet.has_message_text() || !packet.has_signature() || !packet.has_timestamp() || !packet.has_author())
         return false;
-    }
+    QString text = QString::fromStdString(packet.message_text());
+    QString time = QDateTime::fromMSecsSinceEpoch(packet.timestamp()).toUTC().toString();
+    QByteArray data = QByteArray::fromStdString(text.toStdString() + time.toStdString());
+    QString author = QString::fromStdString(packet.author());
+    QByteArray sig = QByteArray::fromStdString(packet.signature());
+    return m_groupMembers[author]->key().verifyData(data, sig);
+}
+
+bool Group::verifyPacket(const Protocol::Data::GroupInvite::InviteResponse &packet) {
+    if (!packet.has_author() || !packet.has_message_text() || !packet.has_signature() || !packet.has_timestamp())
+        return false;
     QString text = QString::fromStdString(packet.message_text());
     QString time = QDateTime::fromMSecsSinceEpoch(packet.timestamp()).toUTC().toString();
     QByteArray data = QByteArray::fromStdString(text.toStdString() + time.toStdString());
@@ -131,9 +130,8 @@ bool Group::verifyPacket(const Protocol::Data::GroupInvite::Invite &packet)
 
 bool Group::verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet)
 {
-    if (!packet.has_author() || !packet.has_message_text() || !packet.has_signature() || !packet.has_timestamp()) {
+    if (!packet.has_author() || !packet.has_message_text() || !packet.has_signature() || !packet.has_timestamp())
         return false;
-    }
     QString text = QString::fromStdString(packet.message_text());
     QString time = QDateTime::fromMSecsSinceEpoch(packet.timestamp()).toUTC().toString();
     QByteArray data = QByteArray::fromStdString(text.toStdString() + time.toStdString());
@@ -142,7 +140,7 @@ bool Group::verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet)
     return m_groupMembers[author]->key().verifyData(data, sig);
 }
 
-bool Group::GroupMember::sendInvite(const Group::GroupInvite &invite)
+bool Group::GroupMember::sendInvite(Protocol::Data::GroupInvite::Invite *invite)
 {
     if (this->m_isSelf) return true;
     auto channel = contact->connection()->findChannel<Protocol::GroupInviteChannel>(Protocol::Channel::Outbound);
@@ -158,7 +156,7 @@ bool Group::GroupMember::sendInvite(const Group::GroupInvite &invite)
     return true;
 }
 
-bool Group::GroupMember::sendMessage(const Group::GroupMessage &message)
+bool Group::GroupMember::sendMessage(Protocol::Data::GroupChat::GroupMessage *message)
 {
     if (this->m_isSelf) return true;
     auto channel = contact->connection()->findChannel<Protocol::GroupChatChannel>(Protocol::Channel::Outbound);
@@ -172,4 +170,9 @@ bool Group::GroupMember::sendMessage(const Group::GroupMessage &message)
         return false;
     }
     return true;
+}
+
+UserIdentity *Group::selfIdentity() const
+{
+    return identityManager->identities().at(0); // assume 1 identity
 }

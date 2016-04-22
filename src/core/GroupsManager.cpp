@@ -56,10 +56,7 @@ Group *GroupsManager::createGroup(const QString &groupName)
 void GroupsManager::addSelfToGroup(Group *group)
 {
     Group::GroupMember *member = new Group::GroupMember(identityManager->identities().at(0)); // assume 1 identity
-    UserIdentity *self = identityManager->identities().at(0); // assume 1 identity
-    QByteArray privateKey = self->hiddenService()->privateKey().encodedPrivateKey(CryptoKey::PEM);
     group->addGroupMember(member);
-    group->setSelfIdentity(self);
 }
 
 Group *GroupsManager::groupFromChannel(const Protocol::Channel *channel)

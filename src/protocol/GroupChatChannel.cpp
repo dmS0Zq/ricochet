@@ -37,7 +37,7 @@ void GroupChatChannel::receivePacket(const QByteArray &packet)
         closeChannel();
         return;
     }
-    qDebug() << "GroupChatChannel::receivePacket got a packet";
+    //qDebug() << "GroupChatChannel::receivePacket got a packet";
     if (message.has_group_message())
         handleGroupMessage(message.group_message());
     else if (message.has_group_message_acknowledge())
@@ -48,35 +48,31 @@ void GroupChatChannel::receivePacket(const QByteArray &packet)
     }
 }
 
-bool GroupChatChannel::sendGroupMessage(const Group::GroupMessage &message)
+bool GroupChatChannel::sendGroupMessage(Protocol::Data::GroupChat::GroupMessage *message)
 {
     MessageId id = ++lastMessageId;
     return sendGroupMessageWithId(message, id);
 }
 
-bool GroupChatChannel::sendGroupMessageWithId(const Group::GroupMessage &message, MessageId id)
+bool GroupChatChannel::sendGroupMessageWithId(Protocol::Data::GroupChat::GroupMessage *message, MessageId id)
 {
     if (direction() != Outbound) {
         BUG() << "Group chat channels are unidirectional and this is not an outbound channel";
         return false;
     }
-    QString text = message.message;
-    QScopedPointer<Data::GroupChat::GroupMessage> packet(new Data::GroupChat::GroupMessage);
-    packet->set_message_id(id);
+    message->set_message_id(id);
+    QString text = QString::fromStdString(message->message_text());
     if (text.isEmpty()) {
         BUG() << "Chat message is empty, and it should've been discarded";
         return false;
     } else if (text.size() > MessageMaxCharacters) {
         BUG() << "Chat message is too long (" << text.size() << "chars), and it shoudl've been limited already. Truncated.";
         text.truncate(MessageMaxCharacters);
+        message->set_message_text(text.toStdString());
     }
     // Also converts to UTF-8
-    packet->set_message_text(text.toStdString());
-    packet->set_author(message.author.toStdString());
-    packet->set_timestamp(message.timestamp.toMSecsSinceEpoch());
-    packet->set_signature(message.signature.constData(), message.signature.size());
     Data::GroupChat::Packet p;
-    p.set_allocated_group_message(packet.take());
+    p.set_allocated_group_message(message);
     if (!Channel::sendMessage(p))
         return false;
     pendingMessages.insert(id);
@@ -90,12 +86,6 @@ void GroupChatChannel::handleGroupMessage(const Data::GroupChat::GroupMessage &m
     QString text = QString::fromStdString(message.message_text());
     QString author = QString::fromStdString(message.author());
     QDateTime time = QDateTime::fromMSecsSinceEpoch(message.timestamp()).toUTC();
-    QByteArray sig = QByteArray::fromStdString(message.signature());
-    qDebug() << "GroupChatChannel::handleGroupMessage got ";
-    qDebug() << text;
-    qDebug() << author;
-    qDebug() << time;
-    qDebug() << "and a" << sig.size() << "byte sig";
     if (direction() != Inbound) {
         qWarning() << "Rejected inbound message on an outbound group chat channel";
         response->set_accepted(false);
@@ -128,10 +118,12 @@ void GroupChatChannel::handleGroupMessage(const Data::GroupChat::GroupMessage &m
         return;
     }
     if (!group->verifyPacket(message)) {
-        qDebug() << "GroupChatChannel::handleGroupMessage: packet did not verify";
+        qDebug() << "☓" << time.toLocalTime().toString() <<  group->groupMembers()[author]->nickname() << text;
+        //qDebug() << "GroupChatChannel::handleGroupMessage: packet did not verify";
     }
     else {
-        qDebug() << "GroupChatChannel::handleGroupMessage: packet did verify";
+        qDebug() << "✓" << time.toLocalTime().toString() << group->groupMembers()[author]->nickname() << text;
+        //qDebug() << "GroupChatChannel::handleGroupMessage: packet did verify";
     }
 }
 

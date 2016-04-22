@@ -12,7 +12,6 @@
 #include <QHash>
 #include <QMap>
 
-
 class Group : public QObject
 {
     Q_OBJECT
@@ -31,27 +30,21 @@ public:
         QDateTime timestamp;
         QByteArray publicKey;
     };
-    struct GroupMessage
-    {
-        QString message;
-        QString author;
-        QByteArray signature;
-        QDateTime timestamp;
-    };
     class GroupMember
     {
     public:
         GroupMember(ContactUser *contact) : m_isSelf(false), contact(contact) {}
         GroupMember(UserIdentity *identity) : m_isSelf(true), identity(identity) {}
 
+        QString nickname() const  { return (m_isSelf ? QString::fromStdString("Me") : contact->nickname()); }
         QString ricochetId() const { return (m_isSelf ? identity->contactID() : contact->contactID()); }
         CryptoKey key() const { return (m_isSelf ? identity->hiddenService()->privateKey() : contact->publicKey()); }
         bool isSelf() const { return m_isSelf; }
 
         QHash<int, Protocol::Channel*> channels() const { return (m_isSelf ? QHash<int, Protocol::Channel*>() : contact->connection()->channels()); }
 
-        bool sendInvite(const Group::GroupInvite &invite);
-        bool sendMessage(const Group::GroupMessage &message);
+        bool sendInvite(Protocol::Data::GroupInvite::Invite *invite);
+        bool sendMessage(Protocol::Data::GroupChat::GroupMessage *message);
 
     private:
         bool m_isSelf;
@@ -66,21 +59,21 @@ public:
     Group(int id, QObject *parent = 0);
 
     QString name() const;
-    UserIdentity *selfIdentity() const { return m_selfIdentity; }
     QHash<QString, GroupMember*> groupMembers() const { return m_groupMembers; }
 
     void setName(const QString &name);
-    void setSelfIdentity(UserIdentity *identity);
 
     int uniqueID() const { return m_uniqueID; }
 
     void addGroupMember(GroupMember *member);
 
     bool verifyPacket(const Protocol::Data::GroupInvite::Invite &packet);
+    bool verifyPacket(const Protocol::Data::GroupInvite::InviteResponse &packet);
     bool verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet);
 
     void testSendMessage();
 
+    UserIdentity *selfIdentity() const;
 signals:
     void nameChanged();
 private slots:
@@ -91,8 +84,7 @@ private:
     QHash<QString, GroupMember*> m_groupMembers;
     int m_uniqueID;
     QString m_name;
-    UserIdentity *m_selfIdentity;
-    QMap<QString, GroupMessage*> m_messageHistory;
+    QMap<QString, Protocol::Data::GroupChat::GroupMessage*> m_messageHistory;
 
     QByteArray signData(const QByteArray &data);
 
