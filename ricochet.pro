@@ -169,7 +169,10 @@ SOURCES += src/main.cpp \
     src/ui/GroupsModel.cpp \
     src/core/GroupsManager.cpp \
     src/protocol/GroupChatChannel.cpp \
-    src/protocol/GroupInviteChannel.cpp
+    src/protocol/GroupInviteChannel.cpp \
+    src/core/GroupMember.cpp \
+    src/core/GroupMessageMonitor.cpp \
+    src/core/GroupMessageHistory.cpp
 
 HEADERS += src/ui/MainWindow.h \
     src/ui/ContactsModel.h \
@@ -205,7 +208,10 @@ HEADERS += src/ui/MainWindow.h \
     src/ui/GroupsModel.h \
     src/core/GroupsManager.h \
     src/protocol/GroupChatChannel.h \
-    src/protocol/GroupInviteChannel.h
+    src/protocol/GroupInviteChannel.h \
+    src/core/GroupMember.h \
+    src/core/GroupMessageMonitor.h \
+    src/core/GroupMessageHistory.h
 
 SOURCES += src/protocol/Channel.cpp \
     src/protocol/ControlChannel.cpp \

@@ -19,9 +19,11 @@ public:
     /* Use this instead of addGroup */
     Q_INVOKABLE Group *createGroup(const QString &groupName);
     Group *addGroup(const QString &name);
+    void removeGroup(Group *group);
     Group *groupFromChannel(const Protocol::Channel *channel);
 signals:
     void groupAdded(Group *group);
+    void groupRemoved(Group *group);
 private:
     int highestID;
     void connectSignals(Group *group);

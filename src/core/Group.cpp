@@ -10,6 +10,7 @@
 Group::Group(int id, QObject *parent)
     : QObject(parent)
     , m_uniqueID(id)
+    , m_state(State::Undefined)
 {
     Q_ASSERT(m_uniqueID >= 0);
 }
@@ -21,19 +22,33 @@ void Group::onContactAdded(ContactUser *user)
 
 void Group::testSendMessage()
 {
-    Protocol::Data::GroupChat::GroupMessage *chatMessage = new Protocol::Data::GroupChat::GroupMessage();
+    Protocol::Data::GroupChat::GroupMessage chatMessage;
     QString author = selfIdentity()->contactID();
     QString text = QString::fromStdString("Ayy LMAO");
     QDateTime timestamp = QDateTime::currentDateTimeUtc();
-    chatMessage->set_author(author.toStdString());
-    chatMessage->set_message_text(text.toStdString());
-    chatMessage->set_timestamp(timestamp.toMSecsSinceEpoch());
+    chatMessage.set_author(author.toStdString());
+    chatMessage.set_message_text(text.toStdString());
+    chatMessage.set_timestamp(timestamp.toMSecsSinceEpoch());
     QByteArray sig = signData(text.toUtf8() + timestamp.toString().toUtf8());
-    chatMessage->set_signature(sig.constData(), sig.size());
+    chatMessage.set_signature(sig.constData(), sig.size());
+    sendMessage(chatMessage);
+}
+
+void Group::sendMessage(Protocol::Data::GroupChat::GroupMessage message)
+{
+    if (!verifyPacket(message)) {
+        qWarning() << "Refusing to send a packet that doesn't verify";
+        return;
+    }
+    GroupMessageMonitor *gmm = new GroupMessageMonitor(message, m_groupMembers, this);
+    m_messageMonitors.append(gmm);
     foreach (auto member, m_groupMembers)
     {
-        member->sendMessage(chatMessage);
+        connect(member, &GroupMember::groupMessageAcknowledged, gmm, &GroupMessageMonitor::onGroupMessageAcknowledged);
+        member->sendMessage(message);
     }
+    connect(gmm, &GroupMessageMonitor::messageMonitorDone, this, &Group::onMessageMonitorDone);
+    m_messageHistory.insert(message);
 }
 
 void Group::onContactStatusChanged(ContactUser *user, int status)
@@ -58,6 +73,18 @@ void Group::onContactStatusChanged(ContactUser *user, int status)
             member->sendInvite(invite);
         }
     }
+    else if (status == ContactUser::Status::Offline)
+    {
+        if (m_groupMembers.contains(user->contactID()))
+        {
+            GroupMember *member = m_groupMembers[user->contactID()];
+            //m_groupMembers.remove(member->ricochetId());
+            if (m_groupMembers.size() < 2)
+            {
+                //groupsManager->removeGroup(this);
+            }
+        }
+    }
     else
     {
         qDebug() << user->nickname() << " went away or something is wrong";
@@ -71,14 +98,16 @@ void Group::onSettingsModified(const QString &key, const QJsonValue &value)
         emit nameChanged();
 }
 
-QString Group::name() const
-{
-    return m_name;
-}
-
 void Group::setName(const QString &name)
 {
     m_name = name;
+    emit nameChanged();
+}
+
+void Group::setState(const State &state)
+{
+    m_state = state;
+    emit stateChanged(m_state);
 }
 
 void Group::addGroupMember(GroupMember *member)
@@ -98,9 +127,9 @@ QByteArray Group::signData(const QByteArray &data)
     return m_groupMembers[selfIdentity()->contactID()]->key().signData(data);
 }
 
-Group *Group::addNewGroup(int id)
+Group *Group::addNewGroup(int id, QObject *parent)
 {
-    Group *group = new Group(id);
+    Group *group = new Group(id, parent);
     group->setName(QString());
     return group;
 }
@@ -140,39 +169,23 @@ bool Group::verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet)
     return m_groupMembers[author]->key().verifyData(data, sig);
 }
 
-bool Group::GroupMember::sendInvite(Protocol::Data::GroupInvite::Invite *invite)
-{
-    if (this->m_isSelf) return true;
-    auto channel = contact->connection()->findChannel<Protocol::GroupInviteChannel>(Protocol::Channel::Outbound);
-    if (!channel) {
-        channel = new Protocol::GroupInviteChannel(Protocol::Channel::Outbound, contact->connection().data());
-        if (!channel->openChannel()) {
-            return false;
-        }
-    }
-    if (!channel->sendInvite(invite)) {
-        return false;
-    }
-    return true;
-}
-
-bool Group::GroupMember::sendMessage(Protocol::Data::GroupChat::GroupMessage *message)
-{
-    if (this->m_isSelf) return true;
-    auto channel = contact->connection()->findChannel<Protocol::GroupChatChannel>(Protocol::Channel::Outbound);
-    if (!channel) {
-        channel = new Protocol::GroupChatChannel(Protocol::Channel::Outbound, contact->connection().data());
-        if (!channel->openChannel()) {
-            return false;
-        }
-    }
-    if (!channel->sendGroupMessage(message)) {
-        return false;
-    }
-    return true;
-}
-
 UserIdentity *Group::selfIdentity() const
 {
     return identityManager->identities().at(0); // assume 1 identity
+}
+
+void Group::begingProtocolIntroduction(const Protocol::Data::GroupInvite::InviteResponse &inviteResponse)
+{
+    setState(State::Introduction);
+
+}
+
+void Group::onMessageMonitorDone(GroupMessageMonitor *monitor, bool totalAcknowledgement)
+{
+    if (totalAcknowledgement)
+        qDebug() << "Everyone got:" << QString::fromStdString(monitor->message().message_text());
+    else
+        qDebug() << "Not everyone got:" << QString::fromStdString(monitor->message().message_text());
+    m_messageMonitors.removeOne(monitor);
+    delete monitor;
 }

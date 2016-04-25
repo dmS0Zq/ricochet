@@ -5,7 +5,7 @@
 #include "GroupChatChannel.pb.h"
 #include "core/Group.h"
 #include <QDateTime>
-#include <QSet>
+#include <QHash>
 
 namespace Protocol
 {
@@ -17,17 +17,17 @@ public:
     typedef quint32 MessageId;
     static const int MessageMaxCharacters = 2000;
     explicit GroupChatChannel(Direction direction, Connection *connection);
-    bool sendGroupMessage(Protocol::Data::GroupChat::GroupMessage *message);
-    bool sendGroupMessageWithId(Protocol::Data::GroupChat::GroupMessage *message, MessageId id);
+    bool sendGroupMessage(Protocol::Data::GroupChat::GroupMessage message);
+    bool sendGroupMessageWithId(Protocol::Data::GroupChat::GroupMessage message, MessageId id);
 signals:
-    void messageAcknowledged(MessageId id, bool accepted);
+    void messageAcknowledged(Protocol::Data::GroupChat::GroupMessage message, bool accepted);
     void messageReceived(const QString &text, const QDateTime &time, MessageId id);
 protected:
     virtual bool allowInboundChannelRequest(const Data::Control::OpenChannel *request, Data::Control::ChannelResult *result);
     virtual bool allowOutboundChannelRequest(Data::Control::OpenChannel *request);
     virtual void receivePacket(const QByteArray &packet);
 private:
-    QSet<MessageId> pendingMessages;
+    QHash<MessageId, Protocol::Data::GroupChat::GroupMessage> pendingMessages;
     MessageId lastMessageId;
     void handleGroupMessage(const Data::GroupChat::GroupMessage &message);
     void handleGroupAcknowledge(const Data::GroupChat::GroupMessageAcknowledge &message);

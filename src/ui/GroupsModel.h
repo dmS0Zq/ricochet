@@ -34,6 +34,7 @@ signals:
 private slots:
     void updateGroup(Group *group = 0);
     void groupAdded(Group *group);
+    void groupRemoved(Group *group);
 private:
     QList<Group*> m_groups;
     GroupsManager *m_manager;

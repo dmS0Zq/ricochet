@@ -48,34 +48,39 @@ void GroupChatChannel::receivePacket(const QByteArray &packet)
     }
 }
 
-bool GroupChatChannel::sendGroupMessage(Protocol::Data::GroupChat::GroupMessage *message)
+bool GroupChatChannel::sendGroupMessage(Protocol::Data::GroupChat::GroupMessage message)
 {
     MessageId id = ++lastMessageId;
     return sendGroupMessageWithId(message, id);
 }
 
-bool GroupChatChannel::sendGroupMessageWithId(Protocol::Data::GroupChat::GroupMessage *message, MessageId id)
+bool GroupChatChannel::sendGroupMessageWithId(Protocol::Data::GroupChat::GroupMessage message, MessageId id)
 {
     if (direction() != Outbound) {
         BUG() << "Group chat channels are unidirectional and this is not an outbound channel";
         return false;
     }
-    message->set_message_id(id);
-    QString text = QString::fromStdString(message->message_text());
+    message.set_message_id(id);
+    QString text = QString::fromStdString(message.message_text());
     if (text.isEmpty()) {
         BUG() << "Chat message is empty, and it should've been discarded";
         return false;
     } else if (text.size() > MessageMaxCharacters) {
         BUG() << "Chat message is too long (" << text.size() << "chars), and it shoudl've been limited already. Truncated.";
         text.truncate(MessageMaxCharacters);
-        message->set_message_text(text.toStdString());
+        message.set_message_text(text.toStdString());
     }
-    // Also converts to UTF-8
+    Protocol::Data::GroupChat::GroupMessage *finalMessage = new Protocol::Data::GroupChat::GroupMessage();
+    finalMessage->set_author(message.author());
+    finalMessage->set_message_id(message.message_id());
+    finalMessage->set_message_text(message.message_text());
+    finalMessage->set_timestamp(message.timestamp());
+    finalMessage->set_signature(message.signature());
     Data::GroupChat::Packet p;
-    p.set_allocated_group_message(message);
+    p.set_allocated_group_message(finalMessage);
     if (!Channel::sendMessage(p))
         return false;
-    pendingMessages.insert(id);
+    pendingMessages.insert(id, *finalMessage);
     return true;
 
 }
@@ -140,9 +145,12 @@ void GroupChatChannel::handleGroupAcknowledge(const Data::GroupChat::GroupMessag
         return;
     }
     MessageId id = message.message_id();
-    if (pendingMessages.remove(id)) {
-        emit messageAcknowledged(id, message.accepted());
-    } else {
+    if (pendingMessages.contains(id)) {
+        auto m = pendingMessages[id];
+        pendingMessages.remove(id);
+        emit messageAcknowledged(m, message.accepted());
+    }
+    else {
         qDebug() << "Received group chat ack for unknown message " << id;
     }
 }

@@ -19,6 +19,7 @@ public:
     explicit GroupInviteChannel(Direction direction, Connection *connection);
     bool sendInvite(Protocol::Data::GroupInvite::Invite *invite);
 signals:
+    void inviteAcknowleged(bool accepted);
     void invitePacketReceived(const Protocol::Data::GroupInvite::Packet &packet);
 protected:
     virtual bool allowInboundChannelRequest(const Data::Control::OpenChannel *request, Data::Control::ChannelResult *result);

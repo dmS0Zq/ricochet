@@ -1,5 +1,6 @@
 #include "GroupsManager.h"
 #include "core/ContactsManager.h"
+#include "core/GroupMember.h"
 #include "core/IdentityManager.h"
 #include "tor/HiddenService.h"
 
@@ -18,7 +19,6 @@ GroupsManager::~GroupsManager()
 
 void GroupsManager::connectSignals(Group *group)
 {
-    //connect(group, SIGNAL(groupDeleted(Group*)), SLOT(groupDeleted(Group*)));
     connect(contactsManager, SIGNAL(contactAdded(ContactUser*)), group, SLOT(onContactAdded(ContactUser*)));
     connect(contactsManager, SIGNAL(contactStatusChanged(ContactUser*,int)), group, SLOT(onContactStatusChanged(ContactUser*,int)));
 }
@@ -27,7 +27,7 @@ Group *GroupsManager::addGroup(const QString &name)
 {
     Q_ASSERT(!name.isEmpty());
     highestID++;
-    Group *group = Group::addNewGroup(highestID);
+    Group *group = Group::addNewGroup(highestID, this);
     group->setParent(this);
     group->setName(name);
     addSelfToGroup(group);
@@ -38,6 +38,16 @@ Group *GroupsManager::addGroup(const QString &name)
     emit groupAdded(group);
 
     return group;
+}
+
+void GroupsManager::removeGroup(Group *group)
+{
+    int index = groups.indexOf(group);
+    if (index != -1)
+    {
+        groups.removeAt(index);
+        emit groupRemoved(group);
+    }
 }
 
 Group *GroupsManager::createGroup(const QString &groupName)
@@ -55,7 +65,7 @@ Group *GroupsManager::createGroup(const QString &groupName)
 
 void GroupsManager::addSelfToGroup(Group *group)
 {
-    Group::GroupMember *member = new Group::GroupMember(identityManager->identities().at(0)); // assume 1 identity
+    GroupMember *member = new GroupMember(identityManager->identities().at(0)); // assume 1 identity
     group->addGroupMember(member);
 }
 

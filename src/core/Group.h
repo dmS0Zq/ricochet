@@ -1,7 +1,10 @@
 #ifndef GROUP_H
 #define GROUP_H
 
-#include "ContactUser.h"
+#include "core/ContactUser.h"
+#include "core/GroupMember.h"
+#include "core/GroupMessageHistory.h"
+#include "core/GroupMessageMonitor.h"
 #include "core/UserIdentity.h"
 #include "protocol/GroupChatChannel.pb.h"
 #include "protocol/GroupInviteChannel.pb.h"
@@ -18,78 +21,63 @@ class Group : public QObject
     Q_DISABLE_COPY(Group)
 
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged)
+    Q_PROPERTY(State state READ state WRITE setState NOTIFY stateChanged)
     Q_PROPERTY(int uniqueID READ uniqueID CONSTANT)
 
     friend class GroupsManager;
 public:
-    struct GroupInvite
-    {
-        QString message;
-        QString author;
-        QByteArray signature;
-        QDateTime timestamp;
-        QByteArray publicKey;
-    };
-    class GroupMember
-    {
-    public:
-        GroupMember(ContactUser *contact) : m_isSelf(false), contact(contact) {}
-        GroupMember(UserIdentity *identity) : m_isSelf(true), identity(identity) {}
-
-        QString nickname() const  { return (m_isSelf ? QString::fromStdString("Me") : contact->nickname()); }
-        QString ricochetId() const { return (m_isSelf ? identity->contactID() : contact->contactID()); }
-        CryptoKey key() const { return (m_isSelf ? identity->hiddenService()->privateKey() : contact->publicKey()); }
-        bool isSelf() const { return m_isSelf; }
-
-        QHash<int, Protocol::Channel*> channels() const { return (m_isSelf ? QHash<int, Protocol::Channel*>() : contact->connection()->channels()); }
-
-        bool sendInvite(Protocol::Data::GroupInvite::Invite *invite);
-        bool sendMessage(Protocol::Data::GroupChat::GroupMessage *message);
-
-    private:
-        bool m_isSelf;
-        QByteArray m_position;
-        QList<QByteArray> m_seeds;
-        QList<QByteArray> m_seedHashes;
-        union {
-            UserIdentity *identity;
-            ContactUser *contact;
-        };
+    enum State {
+        Undefined = 0,
+        Good,
+        Introduction,
+        Rebalancing,
+        IssueResolution
     };
     Group(int id, QObject *parent = 0);
 
-    QString name() const;
+    QString name() const { return m_name; }
+    State state() const { return m_state; }
     QHash<QString, GroupMember*> groupMembers() const { return m_groupMembers; }
 
     void setName(const QString &name);
+    void setState(const State &state);
 
     int uniqueID() const { return m_uniqueID; }
 
     void addGroupMember(GroupMember *member);
+    void removeGroupMember(GroupMember *member);
 
     bool verifyPacket(const Protocol::Data::GroupInvite::Invite &packet);
     bool verifyPacket(const Protocol::Data::GroupInvite::InviteResponse &packet);
     bool verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet);
 
     void testSendMessage();
+    void sendMessage(Protocol::Data::GroupChat::GroupMessage message);
 
     UserIdentity *selfIdentity() const;
+
+    void begingProtocolIntroduction(const Protocol::Data::GroupInvite::InviteResponse &inviteResponse);
 signals:
     void nameChanged();
+    void stateChanged(State state);
+    void groupMessageAcknowledged(Protocol::Data::GroupChat::GroupMessage message, GroupMember *member, bool accepted);
 private slots:
     void onContactAdded(ContactUser *user);
     void onContactStatusChanged(ContactUser *user, int status);
     void onSettingsModified(const QString &key, const QJsonValue &value);
+    void onMessageMonitorDone(GroupMessageMonitor *monitor, bool totalAcknowlegement);
 private:
     QHash<QString, GroupMember*> m_groupMembers;
     int m_uniqueID;
     QString m_name;
-    QMap<QString, Protocol::Data::GroupChat::GroupMessage*> m_messageHistory;
+    GroupMessageHistory m_messageHistory;
+    QList<GroupMessageMonitor*> m_messageMonitors;
+    State m_state;
 
     QByteArray signData(const QByteArray &data);
 
     /* See GroupsManager::addGroup */
-    static Group *addNewGroup(int id);
+    static Group *addNewGroup(int id, QObject *parent);
 };
 
 Q_DECLARE_METATYPE(Group*)

@@ -1,5 +1,6 @@
 #include "GroupInviteChannel.h"
 #include "Channel_p.h"
+#include "core/GroupMember.h"
 #include "core/UserIdentity.h"
 #include "core/IdentityManager.h"
 #include "tor/HiddenService.h"
@@ -124,7 +125,7 @@ void GroupInviteChannel::handleInvite(const Data::GroupInvite::Invite &invite)
     // create group if all good
     if (inviteResponse->accepted()) {
         Group *group = groupsManager->createGroup(QString::fromStdString("New Group"));
-        Group::GroupMember *member = new Group::GroupMember(user);
+        GroupMember *member = new GroupMember(user);
         group->addGroupMember(member);
     }
     // send response
@@ -180,8 +181,10 @@ void GroupInviteChannel::handleInviteResponse(const Data::GroupInvite::InviteRes
     }
     if (response.accepted()) {
         qDebug() << "GroupInviteChannel::handleInviteResponse accepted";
+        //group->beginProtocolIntroduction(response);
     } else {
         qDebug() << "GroupInviteChannel::handleInviteResponse denied";
     }
+    emit inviteAcknowleged(response.accepted());
     closeChannel();
 }

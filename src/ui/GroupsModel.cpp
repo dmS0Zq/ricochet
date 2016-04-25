@@ -107,6 +107,7 @@ void GroupsModel::setManager(GroupsManager *manager)
     if (m_manager)
     {
         connect(manager, SIGNAL(groupAdded(Group*)), SLOT(groupAdded(Group*)));
+        //connect(manager, SIGNAL(groupRemoved(Group*)), SLOT(groupRemoved(Group*)));
         m_groups = manager->groups;
         std::sort(m_groups.begin(), m_groups.end(), groupSort);
         foreach (Group *group, m_groups)
@@ -133,6 +134,14 @@ void GroupsModel::groupAdded(Group *group)
     endInsertRows();
 }
 
+void GroupsModel::groupRemoved(Group *group)
+{
+    int row = m_groups.indexOf(group);
+    beginRemoveRows(QModelIndex(), row, row);
+    m_groups.removeAt(row);
+    endRemoveRows();
+    disconnect(group, 0, this, 0);
+}
 
 void GroupsModel::testSendMessage(Group *group) const
 {
