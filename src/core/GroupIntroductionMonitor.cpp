@@ -13,9 +13,7 @@ GroupIntroductionMonitor::GroupIntroductionMonitor(Introduction introduction, QH
         if (!member->isSelf() && member->ricochetId() != invitee)
             m_outstandingMembers.insert(member->ricochetId(), member);
     if (m_outstandingMembers.size() < 1) {
-        qDebug() << "GroupIntroductionMonitor ctor: small group so done already";
         emit introductionMonitorDone(this, true);
-        return;
     }
     m_introduction = introduction;
     QTimer::singleShot(10*1000, this, &GroupIntroductionMonitor::onTimeout);

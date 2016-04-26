@@ -3,10 +3,11 @@
 #include "protocol/GroupInviteChannel.h"
 #include "protocol/GroupChatChannel.h"
 #include "protocol/GroupMetaChannel.h"
+#include "utils/Useful.h"
 
 GroupMember::GroupMember(ContactUser *contact) : m_isSelf(false), m_state(State::Undefined), contact(contact)
 {
-    connectSignals();
+    connectOutgoingSignals();
 }
 
 GroupMember::GroupMember(UserIdentity *identity) : m_isSelf(true), m_state(State::Good), identity(identity)
@@ -22,9 +23,23 @@ bool GroupMember::sendInvite(Protocol::Data::GroupInvite::Invite invite)
         if (!channel->openChannel()) {
             return false;
         }
-        connectSignals();
+        connectOutgoingSignals();
     }
     if (!channel->sendInvite(invite)) {
+        return false;
+    }
+    return true;
+}
+
+bool GroupMember::sendInviteResponse(Protocol::Data::GroupInvite::InviteResponse response)
+{
+    if (this->m_isSelf) return true;
+    auto channel = contact->connection()->findChannel<Protocol::GroupInviteChannel>(Protocol::Channel::Inbound);
+    if (!channel) {
+        BUG() << "Trying to send an invite response, but no inbound GroupInviteChannel exists";
+        return false;
+    }
+    if (!channel->sendInviteResponse(response)) {
         return false;
     }
     return true;
@@ -39,7 +54,7 @@ bool GroupMember::sendMessage(Protocol::Data::GroupChat::GroupMessage message)
         if (!channel->openChannel()) {
             return false;
         }
-        connectSignals();
+        connectOutgoingSignals();
     }
     if (!channel->sendGroupMessage(message)) {
         return false;
@@ -57,7 +72,7 @@ bool GroupMember::sendIntroduction(Protocol::Data::GroupMeta::Introduction intro
         if (!channel->openChannel()) {
             return false;
         }
-        connectSignals();
+        connectOutgoingSignals();
     }
     if (!channel->sendIntroduction(introduction)) {
         return false;
@@ -65,7 +80,23 @@ bool GroupMember::sendIntroduction(Protocol::Data::GroupMeta::Introduction intro
     return true;
 }
 
-void GroupMember::connectSignals()
+void GroupMember::connectIncomingSignals()
+{
+    Protocol::GroupInviteChannel *inviteChannel = contact->connection()->findChannel<Protocol::GroupInviteChannel>(Protocol::Channel::Inbound);
+    if (inviteChannel) {
+        connect(inviteChannel, &Protocol::GroupInviteChannel::inviteReceived, [this](Protocol::Data::GroupInvite::Invite invite) {emit inviteReceived(invite);});
+    }
+    Protocol::GroupChatChannel *chatChannel = contact->connection()->findChannel<Protocol::GroupChatChannel>(Protocol::Channel::Inbound);
+    if (chatChannel) {
+        connect(chatChannel, &Protocol::GroupChatChannel::groupMessageReceived, [this](Protocol::Data::GroupChat::GroupMessage message) {emit groupMessageReceived(message);});
+    }
+    Protocol::GroupMetaChannel *metaChannel = contact->connection()->findChannel<Protocol::GroupMetaChannel>(Protocol::Channel::Inbound);
+    if (metaChannel) {
+
+    }
+}
+
+void GroupMember::connectOutgoingSignals()
 {
     Protocol::GroupInviteChannel *inviteChannel = contact->connection()->findChannel<Protocol::GroupInviteChannel>(Protocol::Channel::Outbound);
     if (inviteChannel) {

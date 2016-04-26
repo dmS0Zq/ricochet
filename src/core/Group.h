@@ -42,6 +42,8 @@ public:
     State state() const { return m_state; }
     QHash<QString, GroupMember*> groupMembers() const { return m_groupMembers; }
 
+    GroupMember *groupMemberFromRicochetId(QString ricochetId);
+
     void setName(const QString &name);
     void setState(const State &state);
 
@@ -55,22 +57,19 @@ public:
     bool verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet);
     bool verifyPacket(const Protocol::Data::GroupMeta::IntroductionResponse &packet);
 
-    void testSendMessage();
-    void sendMessage(Protocol::Data::GroupChat::GroupMessage message);
-    void sendInvite(Protocol::Data::GroupInvite::Invite invite, GroupMember *member);
-    void sendIntroduction(Protocol::Data::GroupMeta::Introduction introduction);
-
     UserIdentity *selfIdentity() const;
 
     Q_INVOKABLE void beginProtocolInvite(ContactUser *contact);
+    Q_INVOKABLE void beginProtocolSendMessage(QString messageText);
 signals:
     void nameChanged();
     void stateChanged(State state);
     void groupMessageAcknowledged(Protocol::Data::GroupChat::GroupMessage message, GroupMember *member, bool accepted);
 private slots:
-    void onContactAdded(ContactUser *user);
-    void onContactStatusChanged(ContactUser *user, int status);
+    void onChannelOpen(Protocol::Channel *channel);
     void onSettingsModified(const QString &key, const QJsonValue &value);
+    void onGroupMessageReceived(Protocol::Data::GroupChat::GroupMessage &message);
+    void onInviteReceived(Protocol::Data::GroupInvite::Invite &invite);
     void onMessageMonitorDone(GroupMessageMonitor *monitor, bool totalAcknowlegement);
     void onInviteMonitorDone(GroupInviteMonitor *monitor, GroupMember *member, bool responseReceived);
     void onIntroductionMonitorDone(GroupIntroductionMonitor *monitor, bool totalAcceptance);
@@ -88,6 +87,7 @@ private:
     static Group *addNewGroup(int id, QObject *parent);
 
     void beginProtocolIntroduction(Protocol::Data::GroupInvite::InviteResponse inviteResponse);
+    void beginProtocolForwardMessage(Protocol::Data::GroupChat::GroupMessage &message);
 };
 
 Q_DECLARE_METATYPE(Group*)

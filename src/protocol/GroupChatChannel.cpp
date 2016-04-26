@@ -14,9 +14,6 @@ using namespace Protocol;
 GroupChatChannel::GroupChatChannel(Direction direction, Connection *connection)
     : Channel(QStringLiteral("im.ricochet.group.chat"), direction, connection)
 {
-    // The peer might use recent message IDs between connections to handle
-    // re-send. Start at a random ID to reduce chance of collisions, then increment
-    lastMessageId = SecureRNG::randomInt(UINT32_MAX);
 }
 
 bool GroupChatChannel::allowInboundChannelRequest(const Data::Control::OpenChannel *request, Data::Control::ChannelResult *result)
@@ -50,86 +47,48 @@ void GroupChatChannel::receivePacket(const QByteArray &packet)
 
 bool GroupChatChannel::sendGroupMessage(Protocol::Data::GroupChat::GroupMessage message)
 {
-    MessageId id = ++lastMessageId;
-    return sendGroupMessageWithId(message, id);
-}
-
-bool GroupChatChannel::sendGroupMessageWithId(Protocol::Data::GroupChat::GroupMessage message, MessageId id)
-{
     if (direction() != Outbound) {
         BUG() << "Group chat channels are unidirectional and this is not an outbound channel";
         return false;
     }
-    message.set_message_id(id);
-    QString text = QString::fromStdString(message.message_text());
-    if (text.isEmpty()) {
-        BUG() << "Chat message is empty, and it should've been discarded";
+    Data::GroupChat::GroupMessage *final = new Protocol::Data::GroupChat::GroupMessage();
+    final->set_message_id(message.message_id());
+    final->set_signature(message.signature());
+    final->set_timestamp(message.timestamp());
+    final->set_author(message.author());
+    final->set_message_text(message.message_text());
+    Data::GroupChat::Packet packet;
+    packet.set_allocated_group_message(final);
+    if (!Channel::sendMessage(packet))
         return false;
-    } else if (text.size() > MessageMaxCharacters) {
-        BUG() << "Chat message is too long (" << text.size() << "chars), and it shoudl've been limited already. Truncated.";
-        text.truncate(MessageMaxCharacters);
-        message.set_message_text(text.toStdString());
-    }
-    Protocol::Data::GroupChat::GroupMessage *finalMessage = new Protocol::Data::GroupChat::GroupMessage();
-    finalMessage->set_author(message.author());
-    finalMessage->set_message_id(message.message_id());
-    finalMessage->set_message_text(message.message_text());
-    finalMessage->set_timestamp(message.timestamp());
-    finalMessage->set_signature(message.signature());
-    Data::GroupChat::Packet p;
-    p.set_allocated_group_message(finalMessage);
-    if (!Channel::sendMessage(p))
-        return false;
-    pendingMessages.insert(id, *finalMessage);
+    pendingMessages.insert(final->message_id(), *final);
     return true;
-
 }
 
 void GroupChatChannel::handleGroupMessage(const Data::GroupChat::GroupMessage &message)
 {
-    QScopedPointer<Data::GroupChat::GroupMessageAcknowledge> response(new Data::GroupChat::GroupMessageAcknowledge);
-    QString text = QString::fromStdString(message.message_text());
-    QString author = QString::fromStdString(message.author());
-    QDateTime time = QDateTime::fromMSecsSinceEpoch(message.timestamp()).toUTC();
     if (direction() != Inbound) {
-        qWarning() << "Rejected inbound message on an outbound group chat channel";
-        response->set_accepted(false);
-    } else if (text.isEmpty()) {
-        qWarning() << "Rejected empty group chat message";
-        response->set_accepted(false);
-    } else if (text.size() > MessageMaxCharacters) {
-        qWarning() << "Rejected oversize group chat message of " << text.size() << "chars";
-        response->set_accepted(false);
-    } else if (!message.has_signature()) {
-        qWarning() << "Rejected group chat message without signature";
-        response->set_accepted(false);
-    } else if (!message.has_author()) {
-        qWarning() << "Rejected group chat message without author";
-        response->set_accepted(false);
-    } else {
-        QDateTime time = QDateTime::fromMSecsSinceEpoch(message.timestamp());
-        emit messageReceived(text, time, message.message_id());
-        response->set_accepted(true);
-    }
-    if (message.has_message_id()) {
-        response->set_message_id(message.message_id());
-        Data::GroupChat::Packet packet;
-        packet.set_allocated_group_message_acknowledge(response.take());
-        Channel::sendMessage(packet);
+        qWarning() << "GroupChatChannel::handleGroupMessage Rejected inbound message on an outbound group chat channel";
+        return;
     }
     Group *group = groupsManager->groupFromChannel(this);
     if (!group) {
-        BUG() << "No group found with this channel ("<< identifier() <<"). Where did this packet come from?";
+        BUG() << "Unknown group for chat channel"<<identifier()<<". Where did this packet come from?";
         return;
     }
-    if (!group->verifyPacket(message)) {
-        qDebug() << "☓" << time.toLocalTime().toString() <<  group->groupMembers()[author]->nickname() << text;
-        //qDebug() << "GroupChatChannel::handleGroupMessage: packet did not verify";
+    auto acknowledge = new Data::GroupChat::GroupMessageAcknowledge();
+    if (group->verifyPacket(message)) {
+        emit groupMessageReceived(message);
+        acknowledge->set_accepted(true);
     }
     else {
-        qDebug() << "✓" << time.toLocalTime().toString() << group->groupMembers()[author]->nickname() << text;
-        //qDebug() << "GroupChatChannel::handleGroupMessage: packet did verify";
+        qWarning() << "GroupChatChannel::handleGroupMessage ignoring message that didn't verify";
+        acknowledge->set_accepted(false);
     }
+    acknowledge->set_message_id(message.message_id());
+    Data::GroupChat::Packet packet;
+    packet.set_allocated_group_message_acknowledge(acknowledge);
+    Channel::sendMessage(packet);
 }
 
 void GroupChatChannel::handleGroupAcknowledge(const Data::GroupChat::GroupMessageAcknowledge &message)
@@ -144,7 +103,7 @@ void GroupChatChannel::handleGroupAcknowledge(const Data::GroupChat::GroupMessag
         closeChannel();
         return;
     }
-    MessageId id = message.message_id();
+    unsigned int id = message.message_id();
     if (pendingMessages.contains(id)) {
         auto m = pendingMessages[id];
         pendingMessages.remove(id);

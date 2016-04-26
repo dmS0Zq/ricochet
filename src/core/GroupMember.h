@@ -31,15 +31,23 @@ public:
     bool isSelf() const { return m_isSelf; }
 
     QHash<int, Protocol::Channel*> channels() const { return (m_isSelf ? QHash<int, Protocol::Channel*>() : contact->connection()->channels()); }
+    const QSharedPointer<Protocol::Connection> &connection() { return (m_isSelf ? QSharedPointer<Protocol::Connection>() : contact->connection()); }
 
     bool sendInvite(Protocol::Data::GroupInvite::Invite invite);
+    bool sendInviteResponse(Protocol::Data::GroupInvite::InviteResponse response);
     bool sendMessage(Protocol::Data::GroupChat::GroupMessage message);
     bool sendIntroduction(Protocol::Data::GroupMeta::Introduction introduction);
 
     void setState(GroupMember::State state) { m_state = state; }
     GroupMember::State state() { return m_state; }
 
+    // connects signals from incoming/outgoing channels respectively
+    void connectIncomingSignals();
+    void connectOutgoingSignals();
 signals:
+    void inviteReceived(Protocol::Data::GroupInvite::Invite &invite);
+    void groupMessageReceived(Protocol::Data::GroupChat::GroupMessage &message);
+
     void groupInviteAcknowledged(Protocol::Data::GroupInvite::InviteResponse inviteResponse);
     void groupMessageAcknowledged(Protocol::Data::GroupChat::GroupMessage message, GroupMember *member, bool accepted);
     void groupIntroductionResponseReceived(Protocol::Data::GroupMeta::IntroductionResponse introductionResponse);
@@ -54,6 +62,5 @@ private:
         UserIdentity *identity;
         ContactUser *contact;
     };
-    void connectSignals();
 };
 #endif // GROUPMEMBER_H

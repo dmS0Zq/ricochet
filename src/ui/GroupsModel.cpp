@@ -145,5 +145,5 @@ void GroupsModel::groupRemoved(Group *group)
 
 void GroupsModel::testSendMessage(Group *group) const
 {
-    group->testSendMessage();
+    group->beginProtocolSendMessage(QString::fromStdString("Hello. I am a test message."));
 }
