@@ -45,6 +45,14 @@ Item {
             onTriggered: openPreferences()
         }
         MenuItem {
+            text: qsTr("Invite to Group")
+            onTriggered: {
+                var group = groupsManager.test_getTestingGroup()
+                group.beginProtocolInvite(contact)
+            }
+        }
+
+        MenuItem {
             text: qsTr("Rename")
             onTriggered: renameTriggered()
         }

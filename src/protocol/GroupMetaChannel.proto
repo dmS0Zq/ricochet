@@ -1,0 +1,26 @@
+package Protocol.Data.GroupMeta;
+
+import "GroupInviteChannel.proto";
+
+message Packet {
+    optional Introduction introduction = 1;
+    optional IntroductionResponse introduction_response = 2;
+}
+
+message Introduction {
+    optional GroupInvite.InviteResponse invite_response = 1;
+    optional bytes signature = 2;
+    optional int64 timestamp = 3;
+    optional string author = 4; // ricochet id like "ricochet:xxxxxxxxxxxxxxxx"
+    optional string message_text = 5;
+    optional uint32 message_id = 6;
+}
+
+message IntroductionResponse {
+    optional bytes signature = 1;
+    optional int64 timestamp = 2;
+    optional bool accepted = 3 [default = true];
+    optional string author = 4;
+    optional uint32 message_id = 5;
+}
+

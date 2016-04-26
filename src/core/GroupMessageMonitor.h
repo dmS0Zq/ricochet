@@ -26,7 +26,6 @@ private slots:
 private:
     Protocol::Data::GroupChat::GroupMessage m_message;
     QHash<QString, GroupMember*> m_outstandingMembers;
-    QTimer *m_timer;
 };
 
 #endif // GROUPMESSAGE_MONITOR_H

@@ -172,7 +172,10 @@ SOURCES += src/main.cpp \
     src/protocol/GroupInviteChannel.cpp \
     src/core/GroupMember.cpp \
     src/core/GroupMessageMonitor.cpp \
-    src/core/GroupMessageHistory.cpp
+    src/core/GroupMessageHistory.cpp \
+    src/core/GroupInviteMonitor.cpp \
+    src/protocol/GroupMetaChannel.cpp \
+    src/core/GroupIntroductionMonitor.cpp
 
 HEADERS += src/ui/MainWindow.h \
     src/ui/ContactsModel.h \
@@ -211,7 +214,10 @@ HEADERS += src/ui/MainWindow.h \
     src/protocol/GroupInviteChannel.h \
     src/core/GroupMember.h \
     src/core/GroupMessageMonitor.h \
-    src/core/GroupMessageHistory.h
+    src/core/GroupMessageHistory.h \
+    src/core/GroupInviteMonitor.h \
+    src/protocol/GroupMetaChannel.h \
+    src/core/GroupIntroductionMonitor.h
 
 SOURCES += src/protocol/Channel.cpp \
     src/protocol/ControlChannel.cpp \
@@ -237,6 +243,7 @@ PROTOS += src/protocol/ControlChannel.proto \
     src/protocol/ChatChannel.proto \
     src/protocol/GroupChatChannel.proto\
     src/protocol/GroupInviteChannel.proto \
+    src/protocol/GroupMetaChannel.proto \
     src/protocol/ContactRequestChannel.proto
 
 # QML

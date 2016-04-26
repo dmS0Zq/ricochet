@@ -4,6 +4,7 @@
 #include "protocol/GroupChatChannel.h"
 #include "protocol/GroupInviteChannel.h"
 #include "tor/HiddenService.h"
+#include "utils/SecureRNG.h"
 #include <QCryptographicHash>
 #include <QDebug>
 
@@ -17,7 +18,6 @@ Group::Group(int id, QObject *parent)
 
 void Group::onContactAdded(ContactUser *user)
 {
-    qDebug() << name() << " knows about new contact";
 }
 
 void Group::testSendMessage()
@@ -41,14 +41,34 @@ void Group::sendMessage(Protocol::Data::GroupChat::GroupMessage message)
         return;
     }
     GroupMessageMonitor *gmm = new GroupMessageMonitor(message, m_groupMembers, this);
+    connect(gmm, &GroupMessageMonitor::messageMonitorDone, this, &Group::onMessageMonitorDone);
     m_messageMonitors.append(gmm);
     foreach (auto member, m_groupMembers)
     {
         connect(member, &GroupMember::groupMessageAcknowledged, gmm, &GroupMessageMonitor::onGroupMessageAcknowledged);
         member->sendMessage(message);
     }
-    connect(gmm, &GroupMessageMonitor::messageMonitorDone, this, &Group::onMessageMonitorDone);
     m_messageHistory.insert(message);
+}
+
+void Group::sendInvite(Protocol::Data::GroupInvite::Invite invite, GroupMember *member)
+{
+    GroupInviteMonitor *gim = new GroupInviteMonitor(invite, member, this);
+    connect(gim, &GroupInviteMonitor::inviteMonitorDone, this, &Group::onInviteMonitorDone);
+    connect(member, &GroupMember::groupInviteAcknowledged, gim, &GroupInviteMonitor::onGroupInviteAcknowledged);
+    member->sendInvite(invite);
+}
+
+void Group::sendIntroduction(Protocol::Data::GroupMeta::Introduction introduction)
+{
+    qDebug() << "Group::sendIntroduction";
+    GroupIntroductionMonitor *gim = new GroupIntroductionMonitor(introduction, m_groupMembers, this);
+    connect(gim, &GroupIntroductionMonitor::introductionMonitorDone, this, &Group::onIntroductionMonitorDone);
+    foreach (auto member, m_groupMembers)
+    {
+        connect(member, &GroupMember::groupIntroductionResponseReceived, gim, &GroupIntroductionMonitor::onIntroductionResponseReceived);
+        member->sendIntroduction(introduction);
+    }
 }
 
 void Group::onContactStatusChanged(ContactUser *user, int status)
@@ -58,31 +78,12 @@ void Group::onContactStatusChanged(ContactUser *user, int status)
     {
         if (!m_groupMembers.contains(user->contactID()))
         {
-            GroupMember *member = new GroupMember(user);
-            addGroupMember(member);
-            Protocol::Data::GroupInvite::Invite *invite = new Protocol::Data::GroupInvite::Invite();
-            QString message = QString::fromStdString("Hi. Plz join");
-            QDateTime timestamp = QDateTime::currentDateTimeUtc();
-            invite->set_author(selfIdentity()->contactID().toStdString());
-            invite->set_message_text(message.toStdString());
-            invite->set_timestamp(timestamp.toMSecsSinceEpoch());
-            QByteArray sig = signData(message.toUtf8() + timestamp.toString().toUtf8());
-            invite->set_signature(sig.constData(), sig.size());
-            QByteArray publicKey = selfIdentity()->hiddenService()->privateKey().encodedPublicKey(CryptoKey::DER);
-            invite->set_public_key(publicKey.constData(), publicKey.size());
-            member->sendInvite(invite);
         }
     }
     else if (status == ContactUser::Status::Offline)
     {
         if (m_groupMembers.contains(user->contactID()))
         {
-            GroupMember *member = m_groupMembers[user->contactID()];
-            //m_groupMembers.remove(member->ricochetId());
-            if (m_groupMembers.size() < 2)
-            {
-                //groupsManager->removeGroup(this);
-            }
         }
     }
     else
@@ -157,6 +158,13 @@ bool Group::verifyPacket(const Protocol::Data::GroupInvite::InviteResponse &pack
     return m_groupMembers[author]->key().verifyData(data, sig);
 }
 
+bool Group::verifyPacket(const Protocol::Data::GroupMeta::IntroductionResponse &packet)
+{
+    if (!packet.has_author() || !packet.has_message_id() || !packet.has_signature() || !packet.has_timestamp())
+        return false;
+    return true;
+}
+
 bool Group::verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet)
 {
     if (!packet.has_author() || !packet.has_message_text() || !packet.has_signature() || !packet.has_timestamp())
@@ -174,10 +182,43 @@ UserIdentity *Group::selfIdentity() const
     return identityManager->identities().at(0); // assume 1 identity
 }
 
-void Group::begingProtocolIntroduction(const Protocol::Data::GroupInvite::InviteResponse &inviteResponse)
+void Group::beginProtocolInvite(ContactUser *contact)
 {
-    setState(State::Introduction);
-
+    if (m_state != State::Good) {
+        qWarning() << "Not inviting" << contact->contactID() << "because in state" << m_state;
+        return;
+    }
+    m_state = State::PendingInvite;
+    GroupMember *member = new GroupMember(contact);
+    member->setState(GroupMember::State::PendingInvite);
+    addGroupMember(member);
+    Protocol::Data::GroupInvite::Invite invite;
+    QString message = QString::fromStdString("Hi. Plz join");
+    QDateTime timestamp = QDateTime::currentDateTimeUtc();
+    invite.set_author(selfIdentity()->contactID().toStdString());
+    invite.set_message_text(message.toStdString());
+    invite.set_timestamp(timestamp.toMSecsSinceEpoch());
+    QByteArray sig = signData(message.toUtf8() + timestamp.toString().toUtf8());
+    invite.set_signature(sig.constData(), sig.size());
+    QByteArray publicKey = selfIdentity()->hiddenService()->privateKey().encodedPublicKey(CryptoKey::DER);
+    invite.set_public_key(publicKey.constData(), publicKey.size());
+    sendInvite(invite, member);
+}
+void Group::beginProtocolIntroduction(Protocol::Data::GroupInvite::InviteResponse response)
+{
+    Protocol::Data::GroupInvite::InviteResponse *inviteResponse = new Protocol::Data::GroupInvite::InviteResponse();
+    inviteResponse->set_accepted(response.accepted());
+    inviteResponse->set_author(response.author());
+    inviteResponse->set_message_text(response.message_text());
+    inviteResponse->set_timestamp(response.timestamp());
+    inviteResponse->set_signature(response.signature());
+    Protocol::Data::GroupMeta::Introduction introduction;
+    introduction.set_allocated_invite_response(inviteResponse);
+    introduction.set_author(selfIdentity()->contactID().toStdString());
+    introduction.set_message_text("Invite this guy");
+    introduction.set_message_id(SecureRNG::randomInt(UINT_MAX));
+    m_state = State::PendingIntroduction;
+    sendIntroduction(introduction);
 }
 
 void Group::onMessageMonitorDone(GroupMessageMonitor *monitor, bool totalAcknowledgement)
@@ -188,4 +229,20 @@ void Group::onMessageMonitorDone(GroupMessageMonitor *monitor, bool totalAcknowl
         qDebug() << "Not everyone got:" << QString::fromStdString(monitor->message().message_text());
     m_messageMonitors.removeOne(monitor);
     delete monitor;
+}
+
+void Group::onInviteMonitorDone(GroupInviteMonitor *monitor, GroupMember *member, bool responseReceived)
+{
+    if (responseReceived)
+        qDebug() << "Got response:" << QString::fromStdString(monitor->inviteResponse().message_text());
+    else
+        qDebug() << "Got no response";
+    member->setState(GroupMember::State::PendingIntroduction);
+    beginProtocolIntroduction(monitor->inviteResponse());
+    delete monitor;
+}
+
+void Group::onIntroductionMonitorDone(GroupIntroductionMonitor *monitor, bool totalAcceptance)
+{
+    qDebug() << "Group::onIntroductionMonitorDone";
 }

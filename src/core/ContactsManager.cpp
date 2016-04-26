@@ -133,12 +133,10 @@ ContactUser *ContactsManager::contactUserFromChannel(const Protocol::Channel *ch
         auto channels = (*contact)->connection()->channels();
         for (auto chan = channels.begin(); chan != channels.end(); chan++) {
             if ((*chan) == channel) {
-                qDebug() << (*contact)->nickname() << "is on channel" << channel;
                 return (*contact);
             }
         }
     }
-    qDebug() << "No contact owns" << channel;
     return nullptr;
 }
 

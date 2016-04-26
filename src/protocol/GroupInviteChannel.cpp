@@ -39,13 +39,13 @@ void GroupInviteChannel::receivePacket(const QByteArray &packet)
     emit invitePacketReceived(message);
 }
 
-bool GroupInviteChannel::sendInvite(Protocol::Data::GroupInvite::Invite *invite)
+bool GroupInviteChannel::sendInvite(Protocol::Data::GroupInvite::Invite invite)
 {
     if (direction() != Outbound) {
         BUG() << "Group invite channels are unidirectional and this is not an outbound channel";
         return false;
     }
-    QString text = QString::fromStdString(invite->message_text());
+    QString text = QString::fromStdString(invite.message_text());
     if (text.isEmpty()) {
         qWarning() << "Invite message is empty, and it should've been discarded";
         return false;
@@ -53,9 +53,14 @@ bool GroupInviteChannel::sendInvite(Protocol::Data::GroupInvite::Invite *invite)
         qWarning() << "Invite message is too long (" << text.size() << "chars), and it shoudl've been limited already. Ignoring.";
         return false;
     }
-    // Also converts to UTF-8
+    Protocol::Data::GroupInvite::Invite *finalInvite = new Protocol::Data::GroupInvite::Invite();
+    finalInvite->set_author(invite.author());
+    finalInvite->set_message_text(invite.message_text());
+    finalInvite->set_public_key(invite.public_key());
+    finalInvite->set_signature(invite.signature());
+    finalInvite->set_timestamp(invite.timestamp());
     Data::GroupInvite::Packet packet;
-    packet.set_allocated_invite(invite);
+    packet.set_allocated_invite(finalInvite);
     if (!Channel::sendMessage(packet))
         return false;
     return true;
@@ -124,16 +129,11 @@ void GroupInviteChannel::handleInvite(const Data::GroupInvite::Invite &invite)
     inviteResponse->set_public_key(myKeyData.constData(), myKeyData.size());
     // create group if all good
     if (inviteResponse->accepted()) {
-        Group *group = groupsManager->createGroup(QString::fromStdString("New Group"));
+        Group *group = groupsManager->test_getTestingGroup();
         GroupMember *member = new GroupMember(user);
         group->addGroupMember(member);
     }
     // send response
-    qDebug() << author;
-    qDebug() << messageText;
-    qDebug() << timestamp;
-    qDebug() << sig;
-
     Protocol::Data::GroupInvite::Packet packet;
     packet.set_allocated_invite_response(inviteResponse.take());
     Channel::sendMessage(packet);
@@ -181,10 +181,9 @@ void GroupInviteChannel::handleInviteResponse(const Data::GroupInvite::InviteRes
     }
     if (response.accepted()) {
         qDebug() << "GroupInviteChannel::handleInviteResponse accepted";
-        //group->beginProtocolIntroduction(response);
     } else {
         qDebug() << "GroupInviteChannel::handleInviteResponse denied";
     }
-    emit inviteAcknowleged(response.accepted());
+    emit inviteAcknowleged(response);
     closeChannel();
 }

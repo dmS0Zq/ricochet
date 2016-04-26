@@ -2,9 +2,11 @@
 #define GROUP_H
 
 #include "core/ContactUser.h"
+#include "core/GroupIntroductionMonitor.h"
+#include "core/GroupInviteMonitor.h"
 #include "core/GroupMember.h"
-#include "core/GroupMessageHistory.h"
 #include "core/GroupMessageMonitor.h"
+#include "core/GroupMessageHistory.h"
 #include "core/UserIdentity.h"
 #include "protocol/GroupChatChannel.pb.h"
 #include "protocol/GroupInviteChannel.pb.h"
@@ -29,7 +31,8 @@ public:
     enum State {
         Undefined = 0,
         Good,
-        Introduction,
+        PendingInvite,
+        PendingIntroduction,
         Rebalancing,
         IssueResolution
     };
@@ -50,13 +53,16 @@ public:
     bool verifyPacket(const Protocol::Data::GroupInvite::Invite &packet);
     bool verifyPacket(const Protocol::Data::GroupInvite::InviteResponse &packet);
     bool verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet);
+    bool verifyPacket(const Protocol::Data::GroupMeta::IntroductionResponse &packet);
 
     void testSendMessage();
     void sendMessage(Protocol::Data::GroupChat::GroupMessage message);
+    void sendInvite(Protocol::Data::GroupInvite::Invite invite, GroupMember *member);
+    void sendIntroduction(Protocol::Data::GroupMeta::Introduction introduction);
 
     UserIdentity *selfIdentity() const;
 
-    void begingProtocolIntroduction(const Protocol::Data::GroupInvite::InviteResponse &inviteResponse);
+    Q_INVOKABLE void beginProtocolInvite(ContactUser *contact);
 signals:
     void nameChanged();
     void stateChanged(State state);
@@ -66,6 +72,8 @@ private slots:
     void onContactStatusChanged(ContactUser *user, int status);
     void onSettingsModified(const QString &key, const QJsonValue &value);
     void onMessageMonitorDone(GroupMessageMonitor *monitor, bool totalAcknowlegement);
+    void onInviteMonitorDone(GroupInviteMonitor *monitor, GroupMember *member, bool responseReceived);
+    void onIntroductionMonitorDone(GroupIntroductionMonitor *monitor, bool totalAcceptance);
 private:
     QHash<QString, GroupMember*> m_groupMembers;
     int m_uniqueID;
@@ -78,6 +86,8 @@ private:
 
     /* See GroupsManager::addGroup */
     static Group *addNewGroup(int id, QObject *parent);
+
+    void beginProtocolIntroduction(Protocol::Data::GroupInvite::InviteResponse inviteResponse);
 };
 
 Q_DECLARE_METATYPE(Group*)

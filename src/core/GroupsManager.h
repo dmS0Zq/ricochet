@@ -18,6 +18,7 @@ public:
 
     /* Use this instead of addGroup */
     Q_INVOKABLE Group *createGroup(const QString &groupName);
+    Q_INVOKABLE Group *test_getTestingGroup() { return groups.at(0); }
     Group *addGroup(const QString &name);
     void removeGroup(Group *group);
     Group *groupFromChannel(const Protocol::Channel *channel);

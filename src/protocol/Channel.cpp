@@ -41,6 +41,7 @@
 #include "ContactRequestChannel.h"
 #include "GroupInviteChannel.h"
 #include "GroupChatChannel.h"
+#include "GroupMetaChannel.h"
 
 using namespace Protocol;
 
@@ -59,6 +60,8 @@ Channel *Channel::create(const QString &type, Direction direction, Connection *c
         return new GroupInviteChannel(direction, connection);
     } else if (type == QStringLiteral("im.ricochet.group.chat")) {
         return new GroupChatChannel(direction, connection);
+    } else if (type == QStringLiteral("im.ricochet.group.meta")) {
+        return new GroupMetaChannel(direction, connection);
     } else {
         return 0;
     }

@@ -11,9 +11,10 @@ public:
     void insert(Protocol::Data::GroupChat::GroupMessage message);
 private:
     QMap<QByteArray, Protocol::Data::GroupChat::GroupMessage> m_history;
-    const QByteArray oldest();
     void removeOldest();
-    static const int MaxMessageCount = 5;
+    QByteArray keyOfOldest();
+    void prune();
+    static const int MinimumMessageCount = 5;
 };
 
 #endif // GROUPMESSAGEHISTORY_H

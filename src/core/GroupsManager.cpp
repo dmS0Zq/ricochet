@@ -10,6 +10,7 @@ GroupsManager::GroupsManager(QObject *parent) : QObject(parent)
 {
     groupsManager = this;
     highestID = -1;
+    createGroup(QString::fromStdString("Testing Group"));
 }
 
 GroupsManager::~GroupsManager()
@@ -34,6 +35,7 @@ Group *GroupsManager::addGroup(const QString &name)
     connectSignals(group);
 
     qDebug() << "Added new group " << group->name() << " with ID " << group->m_uniqueID;
+    group->setState(Group::State::Good);
     groups.append(group);
     emit groupAdded(group);
 
