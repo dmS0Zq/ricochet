@@ -161,7 +161,6 @@ private:
     OutgoingContactRequest *m_contactRequest;
     SettingsObject *m_settings;
     ConversationModel *m_conversation;
-    CryptoKey m_publicKey;
 
     /* See ContactsManager::addContact */
     static ContactUser *addNewContact(UserIdentity *identity, int id);
