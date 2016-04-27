@@ -19,8 +19,10 @@ public:
     explicit GroupInviteChannel(Direction direction, Connection *connection);
     bool sendInvite(Data::GroupInvite::Invite invite);
     bool sendInviteResponse(Data::GroupInvite::InviteResponse response);
+    bool sendIntroductionAccepted(Data::GroupInvite::IntroductionAccepted accepted);
 signals:
-    void inviteAcknowleged(const Data::GroupInvite::InviteResponse inviteResponse);
+    void introductionAcceptedReceived(const Data::GroupInvite::IntroductionAccepted &accepted);
+    void inviteResponseReceived(const Data::GroupInvite::InviteResponse &response);
     void inviteReceived(const Data::GroupInvite::Invite &invite);
 protected:
     virtual bool allowInboundChannelRequest(const Data::Control::OpenChannel *request, Data::Control::ChannelResult *result);
@@ -29,6 +31,7 @@ protected:
 private:
     void handleInvite(const Data::GroupInvite::Invite &invite);
     void handleInviteResponse(const Data::GroupInvite::InviteResponse &response);
+    void handleIntroductionAccepted(const Data::GroupInvite::IntroductionAccepted &accepted);
 };
 }
 #endif

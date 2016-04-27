@@ -18,11 +18,14 @@ GroupChatChannel::GroupChatChannel(Direction direction, Connection *connection)
 
 bool GroupChatChannel::allowInboundChannelRequest(const Data::Control::OpenChannel *request, Data::Control::ChannelResult *result)
 {
+    Q_UNUSED(request)
+    Q_UNUSED(result)
     return true;
 }
 
 bool GroupChatChannel::allowOutboundChannelRequest(Data::Control::OpenChannel *request)
 {
+    Q_UNUSED(request)
     return true;
 }
 

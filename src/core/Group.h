@@ -17,6 +17,8 @@
 #include <QHash>
 #include <QMap>
 
+class GroupInviteMonitor;
+
 class Group : public QObject
 {
     Q_OBJECT
@@ -39,25 +41,29 @@ public:
     Group(int id, QObject *parent = 0);
 
     QString name() const { return m_name; }
-    State state() const { return m_state; }
-    QHash<QString, GroupMember*> groupMembers() const { return m_groupMembers; }
+    State state() { return m_state; }
+    QHash<QString, GroupMember*> groupMembers() { return m_groupMembers; }
 
     GroupMember *groupMemberFromRicochetId(QString ricochetId);
 
     void setName(const QString &name);
     void setState(const State &state);
 
-    int uniqueID() const { return m_uniqueID; }
+    int uniqueID() { return m_uniqueID; }
 
     void addGroupMember(GroupMember *member);
     void removeGroupMember(GroupMember *member);
 
-    bool verifyPacket(const Protocol::Data::GroupInvite::Invite &packet);
-    bool verifyPacket(const Protocol::Data::GroupInvite::InviteResponse &packet);
-    bool verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet);
-    bool verifyPacket(const Protocol::Data::GroupMeta::IntroductionResponse &packet);
+    static bool verifyPacket(const Protocol::Data::GroupInvite::Invite &packet);
+    static bool verifyPacket(const Protocol::Data::GroupInvite::InviteResponse &packet);
+    static bool verifyPacket(const Protocol::Data::GroupInvite::IntroductionAccepted &packet);
+    static bool verifyPacket(const Protocol::Data::GroupMeta::Introduction &packet);
+    static bool verifyPacket(const Protocol::Data::GroupMeta::IntroductionResponse &packet);
+    static bool verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet);
+    static bool verifyPacket(const Protocol::Data::GroupChat::GroupMessageAcknowledge &packet);
 
-    UserIdentity *selfIdentity() const;
+    static UserIdentity *selfIdentity();
+    static QByteArray signData(const QByteArray &data);
 
     Q_INVOKABLE void beginProtocolInvite(ContactUser *contact);
     Q_INVOKABLE void beginProtocolSendMessage(QString messageText);
@@ -65,14 +71,15 @@ signals:
     void nameChanged();
     void stateChanged(State state);
     void groupMessageAcknowledged(Protocol::Data::GroupChat::GroupMessage message, GroupMember *member, bool accepted);
+public slots:
+    void onInviteMonitorDone(GroupInviteMonitor *monitor, bool responseReceived);
 private slots:
     void onChannelOpen(Protocol::Channel *channel);
     void onSettingsModified(const QString &key, const QJsonValue &value);
     void onGroupMessageReceived(Protocol::Data::GroupChat::GroupMessage &message);
-    void onInviteReceived(Protocol::Data::GroupInvite::Invite &invite);
+    void onGroupIntroductionReceived(Protocol::Data::GroupMeta::Introduction &introduction);
     void onMessageMonitorDone(GroupMessageMonitor *monitor, bool totalAcknowlegement);
-    void onInviteMonitorDone(GroupInviteMonitor *monitor, GroupMember *member, bool responseReceived);
-    void onIntroductionMonitorDone(GroupIntroductionMonitor *monitor, bool totalAcceptance);
+    void onIntroductionMonitorDone(GroupIntroductionMonitor *monitor, GroupMember *invitee, bool totalAcceptance);
 private:
     QHash<QString, GroupMember*> m_groupMembers;
     int m_uniqueID;
@@ -81,12 +88,11 @@ private:
     QList<GroupMessageMonitor*> m_messageMonitors;
     State m_state;
 
-    QByteArray signData(const QByteArray &data);
 
     /* See GroupsManager::addGroup */
     static Group *addNewGroup(int id, QObject *parent);
 
-    void beginProtocolIntroduction(Protocol::Data::GroupInvite::InviteResponse inviteResponse);
+    void beginProtocolIntroduction(const Protocol::Data::GroupInvite::InviteResponse &response, GroupMember *invitee);
     void beginProtocolForwardMessage(Protocol::Data::GroupChat::GroupMessage &message);
 };
 

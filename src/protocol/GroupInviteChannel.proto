@@ -2,10 +2,12 @@ package Protocol.Data.GroupInvite;
 
 message Packet {
     optional Invite invite = 1;
-    optional InviteResponse invite_response= 2;
+    optional InviteResponse invite_response = 2;
+    optional IntroductionAccepted introduction_accepted = 3;
 }
 
 message Invite {
+    // signature = message_text + timestamp.toString
     optional bytes signature = 1;
     optional int64 timestamp = 2;
     optional string message_text = 3;
@@ -14,10 +16,22 @@ message Invite {
 }
 
 message InviteResponse {
+    // signature = message_text + timestamp.toString
     optional bytes signature = 1;
     optional int64 timestamp = 2;
     optional bool accepted = 3 [default = true];
     optional string author = 4; // ricochet id like "ricochet:xxxxxxxxxxxxxxxx"
     optional bytes public_key = 5;
     optional string message_text = 6;
+}
+
+message IntroductionAccepted {
+    // signature is of author + timestamp + [member+member_signature] + [...]
+    optional bytes signature = 1;
+    optional int64 timestamp = 2;
+    optional string author = 3;
+    optional InviteResponse invite_response = 4;
+    repeated string member = 5; // ricochet ids like "ricochet:xxxxxxxxxxxxxxxx"
+    repeated bytes member_public_key = 6;
+    repeated bytes member_signature = 7; // sig of entire InviteResponse packet + ricochetId
 }

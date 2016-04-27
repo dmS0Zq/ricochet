@@ -11,16 +11,20 @@ using namespace Protocol;
 GroupInviteChannel::GroupInviteChannel(Direction direction, Connection *connection)
     : Channel(QStringLiteral("im.ricochet.group.invite"), direction, connection)
 {
-
+    connect(this, &GroupInviteChannel::inviteReceived, groupsManager, &GroupsManager::onInviteReceived);
+    connect(this, &GroupInviteChannel::introductionAcceptedReceived, groupsManager, &GroupsManager::onIntroductionAcceptedReceived);
 }
 
 bool GroupInviteChannel::allowInboundChannelRequest(const Data::Control::OpenChannel *request, Data::Control::ChannelResult *result)
 {
+    Q_UNUSED(request)
+    Q_UNUSED(result)
     return true;
 }
 
 bool GroupInviteChannel::allowOutboundChannelRequest(Data::Control::OpenChannel *request)
 {
+    Q_UNUSED(request)
     return true;
 }
 
@@ -36,12 +40,18 @@ void GroupInviteChannel::receivePacket(const QByteArray &packet)
         handleInvite(message.invite());
     else if (message.has_invite_response())
         handleInviteResponse(message.invite_response());
+    else if (message.has_introduction_accepted())
+        handleIntroductionAccepted(message.introduction_accepted());
 }
 
 bool GroupInviteChannel::sendInvite(Data::GroupInvite::Invite invite)
 {
     if (direction() != Outbound) {
         BUG() << "Group invite channels are unidirectional and this is not an outbound channel";
+        return false;
+    }
+    if (!Group::verifyPacket(invite)) {
+        qWarning() << "GroupInviteChannel::sendInvite refusing to send invite that didn't verify";
         return false;
     }
     Data::GroupInvite::Invite *final = new Data::GroupInvite::Invite();
@@ -63,6 +73,10 @@ bool GroupInviteChannel::sendInviteResponse(Data::GroupInvite::InviteResponse re
         BUG() << "Cannot send invite response on a channel which is not inbound";
         return false;
     }
+    if (!Group::verifyPacket(response)) {
+        qWarning() << "GroupInviteChannel::sendInviteResponse refusing to send packet that didn't verify";
+        return false;
+    }
     Data::GroupInvite::InviteResponse *final = new Data::GroupInvite::InviteResponse();
     final->set_signature(response.signature());
     final->set_timestamp(response.timestamp());
@@ -77,28 +91,44 @@ bool GroupInviteChannel::sendInviteResponse(Data::GroupInvite::InviteResponse re
     return true;
 }
 
+bool GroupInviteChannel::sendIntroductionAccepted(Data::GroupInvite::IntroductionAccepted accepted)
+{
+    if (direction() != Outbound) {
+        BUG() << "Cannot send introduction accepted on a channel which is not outbound";
+        return false;
+    }
+    if (!Group::verifyPacket(accepted)) {
+        qWarning() << "GroupInviteChannel::sendIntroductionAccepted refusing to send packet that did not verify";
+        return false;
+    }
+    Data::GroupInvite::IntroductionAccepted *final = new Data::GroupInvite::IntroductionAccepted();
+    final->set_signature(accepted.signature());
+    final->set_timestamp(accepted.timestamp());
+    final->set_author(accepted.author());
+    for (int i = 0; i < accepted.member_size(); i++) {
+        final->add_member(accepted.member(i));
+        final->add_member_public_key(accepted.member_public_key(i));
+        final->add_member_signature(accepted.member_signature(i));
+    }
+    Data::GroupInvite::Packet packet;
+    packet.set_allocated_introduction_accepted(final);
+    if (!Channel::sendMessage(packet)) {
+        return false;
+    }
+    return true;
+}
+
 void GroupInviteChannel::handleInvite(const Data::GroupInvite::Invite &invite)
 {
     if (direction() != Inbound) {
         qWarning() << "Rejected inbound message on an outbound group invite channel";
         return;
     }
-    Group *group = groupsManager->test_getTestingGroup();
-    //Group *group = groupsManager->groupFromChannel(this);
-    if (!group) {
-        BUG() << "Unknown group for invite channel" << identifier() << ". Where did this packet come from?";
+    if (!Group::verifyPacket(invite)) {
+        qWarning() << "Rejected invite which did not verify";
         return;
     }
-    ContactUser *contact = group->selfIdentity()->getContacts()->contactUserFromChannel(this);
-    GroupMember *member = new GroupMember(contact);
-    member->connectIncomingSignals();
-    group->addGroupMember(member);
-    if (group->verifyPacket(invite)) {
-        emit inviteReceived(invite);
-    }
-    else {
-        qWarning() << "GroupInviteChannel::handleInvite ignoring invite that didn't verify";
-    }
+    emit inviteReceived(invite);
 }
 
 void GroupInviteChannel::handleInviteResponse(const Data::GroupInvite::InviteResponse &response)
@@ -108,13 +138,24 @@ void GroupInviteChannel::handleInviteResponse(const Data::GroupInvite::InviteRes
         closeChannel();
         return;
     }
-    Group *group = groupsManager->test_getTestingGroup();
-    if (!group) {
-        BUG() << "Unknown group for invite channel" << identifier() << ". Where did this packet come from?";
+    if (!Group::verifyPacket(response)) {
+        qWarning() << "Rejected invite response which did not verify";
+    }
+    emit inviteResponseReceived(response);
+}
+
+void GroupInviteChannel::handleIntroductionAccepted(const Data::GroupInvite::IntroductionAccepted &accepted)
+{
+    if (direction() != Inbound) {
+        qWarning() << "Rejected inbound message on an outbound group invite channel";
+        closeChannel();
         return;
     }
-    if (group->verifyPacket(response)) {
-        emit inviteAcknowleged(response);
+    if (!Group::verifyPacket(accepted)) {
+        qWarning() << "Rejected introduction accepted which did not verify";
+        closeChannel();
+        return;
     }
+    emit introductionAcceptedReceived(accepted);
     closeChannel();
 }

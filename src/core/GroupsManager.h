@@ -25,6 +25,9 @@ public:
 signals:
     void groupAdded(Group *group);
     void groupRemoved(Group *group);
+public slots:
+    void onInviteReceived(const Protocol::Data::GroupInvite::Invite &invite);
+    void onIntroductionAcceptedReceived(const Protocol::Data::GroupInvite::IntroductionAccepted &accepted);
 private:
     int highestID;
     void connectSignals(Group *group);

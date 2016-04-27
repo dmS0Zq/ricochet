@@ -5,15 +5,15 @@
 
 using Protocol::Data::GroupMeta::Introduction;
 
-GroupIntroductionMonitor::GroupIntroductionMonitor(Introduction introduction, QHash<QString, GroupMember*> members, QObject *parent)
+GroupIntroductionMonitor::GroupIntroductionMonitor(Introduction introduction, GroupMember *invitee, QHash<QString, GroupMember*> members, QObject *parent)
     : QObject(parent)
+    , m_invitee(invitee)
 {
-    auto invitee = QString::fromStdString(introduction.invite_response().author());
     foreach (auto member, members)
-        if (!member->isSelf() && member->ricochetId() != invitee)
+        if (!member->isSelf() && member->ricochetId() != invitee->ricochetId())
             m_outstandingMembers.insert(member->ricochetId(), member);
     if (m_outstandingMembers.size() < 1) {
-        emit introductionMonitorDone(this, true);
+        emit introductionMonitorDone(this, m_invitee, true);
     }
     m_introduction = introduction;
     QTimer::singleShot(10*1000, this, &GroupIntroductionMonitor::onTimeout);
@@ -21,7 +21,7 @@ GroupIntroductionMonitor::GroupIntroductionMonitor(Introduction introduction, QH
 
 void GroupIntroductionMonitor::onTimeout()
 {
-    emit introductionMonitorDone(this, (m_outstandingMembers.size() < 1));
+    emit introductionMonitorDone(this, m_invitee, (m_outstandingMembers.size() < 1));
 }
 
 void GroupIntroductionMonitor::onIntroductionResponseReceived(Protocol::Data::GroupMeta::IntroductionResponse introductionResponse)
@@ -34,6 +34,6 @@ void GroupIntroductionMonitor::onIntroductionResponseReceived(Protocol::Data::Gr
         m_outstandingMembers.remove(QString::fromStdString(introductionResponse.author()));
     }
     if (m_outstandingMembers.size() < 1) {
-        emit introductionMonitorDone(this, true);
+        emit introductionMonitorDone(this, m_invitee, true);
     }
 }

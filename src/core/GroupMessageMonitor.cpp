@@ -22,6 +22,7 @@ void GroupMessageMonitor::onTimeout()
 
 void GroupMessageMonitor::onGroupMessageAcknowledged(Protocol::Data::GroupChat::GroupMessage message, GroupMember *member, bool accepted)
 {
+    Q_UNUSED(message)
     if (!accepted)
         return;
     if (m_outstandingMembers.contains(member->ricochetId())) {
