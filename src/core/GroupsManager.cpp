@@ -119,8 +119,15 @@ void GroupsManager::onInviteReceived(const Protocol::Data::GroupInvite::Invite &
 
 void GroupsManager::onIntroductionAcceptedReceived(const Protocol::Data::GroupInvite::IntroductionAccepted &accepted)
 {
-    qDebug() << "GroupsManager::onIntroductionAcceptedReceived";
+    if (!Group::verifyPacket(accepted)) {
+        BUG() << "GroupsManager::onIntroductionAcceptedReceived got packet that didn't verify and shouldn't have gotten here.";
+        return;
+    }
     Group *group = test_getTestingGroup();
     GroupMember *member = new GroupMember(contactsManager->lookupHostname(QString::fromStdString(accepted.author())));
     group->addGroupMember(member);
+    for (int i = 0; i < accepted.member_size(); i++) {
+        member = new GroupMember(contactsManager->lookupHostname(QString::fromStdString(accepted.member(i))));
+        group->addGroupMember(member);
+    }
 }

@@ -110,27 +110,32 @@ bool Group::verifyPacket(const Protocol::Data::GroupInvite::InviteResponse &pack
             !packet.has_author() ||
             !packet.has_public_key() ||
             !packet.has_message_text()) {
+        qDebug() << "Group::verifyPacket InviteResponse missing a piece";
         return false;
     }
     // verify public key data is valid
     CryptoKey key;
     QByteArray keyData = QByteArray::fromStdString(packet.public_key());
     if (!key.loadFromData(keyData, CryptoKey::PublicKey, CryptoKey::DER)) {
+        qDebug() << "Group::verifyPacket InviteResponse bad key data";
         return false;
     }
     // verify public key resolves to claimed author
     QString author = QString::fromStdString(packet.author());
     if (QString::fromStdString("ricochet:") + key.torServiceID() != author) {
+        qDebug() << "Group::verifyPacket InviteResponse public key not to right author";
         return false;
     }
     // verify time isn't too long ago
     QDateTime timestamp = QDateTime::fromMSecsSinceEpoch(packet.timestamp()).toUTC();
     if (timestamp < QDateTime::fromMSecsSinceEpoch(1)) {
+        qDebug() << "Group::verifyPacket InviteResponse timestamp bad";
         return false;
     }
     QByteArray signature = QByteArray::fromStdString(packet.signature());
     QString messageText = QString::fromStdString(packet.message_text());
     if (!key.verifyData(messageText.toUtf8() + timestamp.toString().toUtf8(), signature)) {
+        qDebug() << "Group::verifyPacket InviteResponse signature bad";
         return false;
     }
     return true;
@@ -141,6 +146,8 @@ bool Group::verifyPacket(const Protocol::Data::GroupInvite::IntroductionAccepted
     if (!packet.has_signature() ||
             !packet.has_timestamp() ||
             !packet.has_author() ||
+            !packet.has_invite_response() ||
+            !verifyPacket(packet.invite_response()) ||
             packet.member_size() != packet.member_public_key_size() ||
             packet.member_size() != packet.member_signature_size()) {
         return false;
@@ -148,8 +155,34 @@ bool Group::verifyPacket(const Protocol::Data::GroupInvite::IntroductionAccepted
     QByteArray data = QByteArray::fromStdString(packet.author());
     data += QByteArray::fromStdString(QDateTime::fromMSecsSinceEpoch(packet.timestamp()).toUTC().toString().toStdString());
     for (int i = 0; i < packet.member_size(); i++) {
-        // add member info to data
-        BUG() << "Group::verifyPacket IntroductionAccepted not implemented for larger groups";
+        // verify member_signature
+        bool accepted = true;
+        CryptoKey k;
+        QByteArray s = QByteArray::fromStdString(packet.member_signature(i));
+        QByteArray d = QByteArray::fromStdString(packet.member(i));
+        d += QByteArray::fromRawData(packet.invite_response().SerializeAsString().data(), packet.invite_response().SerializeAsString().size());
+        d += QByteArray::fromRawData((char*)&accepted, sizeof(bool));
+        if (QString::fromStdString(packet.member(i)) == selfIdentity()->contactID()) {
+            k = selfIdentity()->hiddenService()->privateKey();
+        } else {
+            k = contactsManager->lookupHostname(QString::fromStdString(packet.member(i)))->publicKey();
+            if (k.publicKeyDigest() == CryptoKey().publicKeyDigest()) {
+                QByteArray keyData = QByteArray::fromStdString(packet.member_public_key(i));
+                if (!k.loadFromData(keyData, CryptoKey::PublicKey, CryptoKey::DER)) {
+                    return false;
+                } else if (QString::fromStdString("ricochet:")+k.torServiceID() != QString::fromStdString(packet.member(i))) {
+                    return false;
+                } else {
+                    contactsManager->lookupHostname(QString::fromStdString(packet.member(i)))->setPublicKey(k);
+                }
+            }
+        }
+        if (!k.verifyData(d, s)) {
+            return false;
+        }
+        // member signature good, so add it to data
+        data += QByteArray::fromStdString(packet.member(i));
+        data += s;
     }
     QByteArray signature = QByteArray::fromStdString(packet.signature());
     CryptoKey key;
@@ -172,24 +205,54 @@ bool Group::verifyPacket(const Protocol::Data::GroupMeta::Introduction &packet)
             !packet.has_signature() ||
             !packet.has_timestamp() ||
             !packet.has_author() ||
-            !packet.has_message_text() ||
-            !packet.has_message_id()) {
+            !packet.has_message_text()) {
         return false;
     }
-    BUG() << "Group::verifyPacket Introduction not implemented";
+    QByteArray data = QByteArray::fromStdString(packet.message_text());
+    data += QDateTime::fromMSecsSinceEpoch(packet.timestamp()).toUTC().toString().toUtf8();
+    data += QByteArray::fromRawData(packet.invite_response().SerializeAsString().data(), packet.invite_response().SerializeAsString().size());
+    QByteArray signature = QByteArray::fromStdString(packet.signature());
+    QString author = QString::fromStdString(packet.author());
+    CryptoKey key;
+    if (selfIdentity()->contactID() == QString::fromStdString(packet.author())) {
+        key = selfIdentity()->hiddenService()->privateKey();
+    } else {
+        QString hostname = ContactIDValidator::hostnameFromID(author);
+        key = contactsManager->lookupHostname(hostname)->publicKey();
+    }
+    if (!key.verifyData(data, signature)) {
+        return false;
+    }
     return true;
 }
 
 bool Group::verifyPacket(const Protocol::Data::GroupMeta::IntroductionResponse &packet)
 {
-    if (!packet.has_signature() ||
+    if (!packet.has_invite_response() ||
+            !verifyPacket(packet.invite_response()) ||
+            !packet.has_signature() ||
             !packet.has_timestamp() ||
             !packet.has_accepted() ||
-            !packet.has_author() ||
-            !packet.has_message_id()) {
+            !packet.has_author()) {
         return false;
     }
-    BUG() << "Group::verifyPacket IntroductionResponse not implementeed";
+    QByteArray signature = QByteArray::fromStdString(packet.signature());
+    bool accepted = packet.accepted();
+    QString author = QString::fromStdString(packet.author());
+    QByteArray data = author.toUtf8();
+    data += QByteArray::fromRawData(packet.invite_response().SerializeAsString().data(), packet.invite_response().SerializeAsString().size());
+    data += QByteArray::fromRawData((char*)&accepted, sizeof(bool));
+    qDebug() << "data length:" << data.size();
+    CryptoKey key;
+    if (selfIdentity()->contactID() == author) {
+        key = selfIdentity()->hiddenService()->privateKey();
+    } else {
+        QString hostname = ContactIDValidator::hostnameFromID(author);
+        key = contactsManager->lookupHostname(hostname)->publicKey();
+    }
+    if (!key.verifyData(data, signature)) {
+        return false;
+    }
     return true;
 }
 
@@ -287,10 +350,11 @@ void Group::beginProtocolInvite(ContactUser *contact)
 }
 void Group::beginProtocolIntroduction(const Protocol::Data::GroupInvite::InviteResponse &response, GroupMember *invitee)
 {
-    if (m_groupMembers.size() < 2) {
-        onIntroductionMonitorDone(nullptr, invitee, true);
-        return;
-    }
+    //if (m_groupMembers.size() < 2) {
+    //    qDebug() << "Group::beginProtocolIntroduction small group, so already done";
+    //    onIntroductionMonitorDone(nullptr, invitee, true);
+    //    return;
+    //}
     Protocol::Data::GroupInvite::InviteResponse *inviteResponse = new Protocol::Data::GroupInvite::InviteResponse();
     inviteResponse->set_signature(response.signature());
     inviteResponse->set_timestamp(response.timestamp());
@@ -300,16 +364,26 @@ void Group::beginProtocolIntroduction(const Protocol::Data::GroupInvite::InviteR
     inviteResponse->set_message_text(response.message_text());
     Protocol::Data::GroupMeta::Introduction introduction;
     introduction.set_allocated_invite_response(inviteResponse);
-    introduction.set_author(selfIdentity()->contactID().toStdString());
-    introduction.set_message_text("Invite this guy");
-    introduction.set_message_id(SecureRNG::randomInt(UINT_MAX));
+    QByteArray signature;
+    QDateTime timestamp = QDateTime::currentDateTimeUtc();
+    QString author = selfIdentity()->contactID();
+    QString messageText = QString::fromStdString("Allow this guy in.");
+    QByteArray data = messageText.toUtf8();
+    data += timestamp.toString().toUtf8();
+    data += QByteArray::fromRawData(inviteResponse->SerializeAsString().data(), inviteResponse->SerializeAsString().size());
+    signature = signData(data);
+    introduction.set_signature(signature.constData(), signature.size());
+    introduction.set_timestamp(timestamp.toMSecsSinceEpoch());
+    introduction.set_author(author.toStdString());
+    introduction.set_message_text(messageText.toStdString());
+    if (!verifyPacket(introduction)) {
+        BUG() << "Just made an Introduction packet but it didn't verify";
+        return;
+    }
     m_state = State::PendingIntroduction;
-    GroupIntroductionMonitor *monitor = new GroupIntroductionMonitor(introduction, invitee, m_groupMembers, this);
-    connect(monitor, &GroupIntroductionMonitor::introductionMonitorDone, this, &Group::onIntroductionMonitorDone);
-    foreach (auto member, m_groupMembers)
-    {
-        connect(member, &GroupMember::groupIntroductionResponseReceived, monitor, &GroupIntroductionMonitor::onIntroductionResponseReceived);
-        member->sendIntroduction(introduction);
+    GroupIntroductionMonitor *monitor = new GroupIntroductionMonitor(introduction, invitee, this, m_groupMembers, this);
+    if (!monitor->go()) {
+        qWarning() << "Group::beginProtocolIntroduction could not send introduction";
     }
 }
 
@@ -367,22 +441,34 @@ void Group::onGroupIntroductionReceived(Protocol::Data::GroupMeta::Introduction 
     GroupMember *member = new GroupMember(invitedUser);
     addGroupMember(member);
     Protocol::Data::GroupMeta::IntroductionResponse response;
+    Protocol::Data::GroupInvite::InviteResponse *inviteResponse = new Protocol::Data::GroupInvite::InviteResponse();
+    inviteResponse->set_signature(introduction.invite_response().signature());
+    inviteResponse->set_timestamp(introduction.invite_response().timestamp());
+    inviteResponse->set_accepted(introduction.invite_response().accepted());
+    inviteResponse->set_author(introduction.invite_response().author());
+    inviteResponse->set_public_key(introduction.invite_response().public_key());
+    inviteResponse->set_message_text(introduction.invite_response().message_text());
+    QByteArray signature;
     QDateTime timestamp = QDateTime::currentDateTimeUtc();
-    int id = introduction.message_id();
-    QByteArray data = QByteArray::fromRawData((char*)&id, sizeof(id));
-    QByteArray sig = signData(data + timestamp.toString().toUtf8());
-    response.set_signature(sig.constData(), sig.size());
+    bool accepted = true;
+    QString author = selfIdentity()->contactID();
+    QByteArray data = author.toUtf8();
+    data += QByteArray::fromRawData(inviteResponse->SerializeAsString().data(), inviteResponse->SerializeAsString().size());
+    data += QByteArray::fromRawData((char*)&accepted, sizeof(bool));
+    signature = signData(data);
+    response.set_allocated_invite_response(inviteResponse);
+    response.set_signature(signature.constData(), signature.size());
     response.set_timestamp(timestamp.toMSecsSinceEpoch());
-    response.set_accepted(true);
-    response.set_author(selfIdentity()->contactID().toStdString());
-    response.set_message_id(introduction.message_id());
+    response.set_accepted(accepted);
+    response.set_author(author.toStdString());
     if (!verifyPacket(response)) {
         BUG() << "Group::onGroupIntroductionReceived just make introduction response and it didn't verify";
         return;
     }
     foreach (auto member, m_groupMembers)
     {
-        member->sendIntroductionResponse(response);
+        if (member->ricochetId() != selfIdentity()->contactID())
+            member->sendIntroductionResponse(response);
     }
 }
 
@@ -420,15 +506,35 @@ void Group::onIntroductionMonitorDone(GroupIntroductionMonitor *monitor, GroupMe
     QString author = selfIdentity()->contactID();
     QByteArray data = author.toUtf8() + timestamp.toString().toUtf8();
     // for each member, add their stuff to the data
-    //
+    foreach (auto member, m_groupMembers) {
+        if (member->ricochetId() != selfIdentity()->contactID()) {
+            data += member->ricochetId().toUtf8();
+            data += monitor->introductionResponseSignatures()[member->ricochetId()];
+        }
+    }
     //
     signature = signData(data);
     accepted.set_signature(signature.constData(), signature.size());
     accepted.set_timestamp(timestamp.toMSecsSinceEpoch());
     accepted.set_author(author.toStdString());
-    //accepted.set_allocated_invite_response(monitor
+    Protocol::Data::GroupInvite::InviteResponse *inviteResponse = new Protocol::Data::GroupInvite::InviteResponse();
+    inviteResponse->set_signature(monitor->inviteResponse().signature());
+    inviteResponse->set_timestamp(monitor->inviteResponse().timestamp());
+    inviteResponse->set_accepted(monitor->inviteResponse().accepted());
+    inviteResponse->set_author(monitor->inviteResponse().author());
+    inviteResponse->set_public_key(monitor->inviteResponse().public_key());
+    inviteResponse->set_message_text(monitor->inviteResponse().message_text());
+    accepted.set_allocated_invite_response(inviteResponse);
     // for each member, add their stuff to accepted
-    //
+    foreach (auto member, m_groupMembers) {
+        if (member->ricochetId() != selfIdentity()->contactID()) {
+            accepted.add_member(member->ricochetId().toStdString());
+            QByteArray k = member->key().encodedPublicKey(CryptoKey::DER);
+            accepted.add_member_public_key(k.constData(), k.size());
+            QByteArray s = monitor->introductionResponseSignatures()[member->ricochetId()];
+            accepted.add_member_signature(s.constData(), s.size());
+        }
+    }
     //
     if (!verifyPacket(accepted)) {
         BUG() << "Group::onIntroductionMonitorDone just made a IntroductionAccepted and it didn't verify";

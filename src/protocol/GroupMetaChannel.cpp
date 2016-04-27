@@ -45,6 +45,7 @@ void GroupMetaChannel::receivePacket(const QByteArray &packet)
 
 bool GroupMetaChannel::sendIntroduction(Data::GroupMeta::Introduction introduction)
 {
+    qDebug() << "GroupMetaChannel::sendIntroduction";
     Data::GroupInvite::InviteResponse *inviteResponse = new Data::GroupInvite::InviteResponse();
     inviteResponse->set_signature(introduction.invite_response().signature());
     inviteResponse->set_timestamp(introduction.invite_response().timestamp());
@@ -58,7 +59,6 @@ bool GroupMetaChannel::sendIntroduction(Data::GroupMeta::Introduction introducti
     final->set_timestamp(introduction.timestamp());
     final->set_author(introduction.author());
     final->set_message_text(introduction.message_text());
-    final->set_message_id(introduction.message_id());
     Data::GroupMeta::Packet packet;
     packet.set_allocated_introduction(final);
     if (!Channel::sendMessage(packet))
@@ -73,7 +73,6 @@ bool GroupMetaChannel::sendIntroductionResponse(Data::GroupMeta::IntroductionRes
     final->set_timestamp(introductionResponse.timestamp());
     final->set_accepted(introductionResponse.accepted());
     final->set_author(introductionResponse.author());
-    final->set_message_id(introductionResponse.message_id());
     Data::GroupMeta::Packet packet;
     packet.set_allocated_introduction_response(final);
     if (!Channel::sendMessage(packet))

@@ -101,7 +101,15 @@ bool GroupInviteChannel::sendIntroductionAccepted(Data::GroupInvite::Introductio
         qWarning() << "GroupInviteChannel::sendIntroductionAccepted refusing to send packet that did not verify";
         return false;
     }
+    Data::GroupInvite::InviteResponse *finalResponse = new Data::GroupInvite::InviteResponse();
+    finalResponse->set_signature(accepted.invite_response().signature());
+    finalResponse->set_timestamp(accepted.invite_response().timestamp());
+    finalResponse->set_accepted(accepted.invite_response().accepted());
+    finalResponse->set_author(accepted.invite_response().author());
+    finalResponse->set_public_key(accepted.invite_response().public_key());
+    finalResponse->set_message_text(accepted.invite_response().message_text());
     Data::GroupInvite::IntroductionAccepted *final = new Data::GroupInvite::IntroductionAccepted();
+    final->set_allocated_invite_response(finalResponse);
     final->set_signature(accepted.signature());
     final->set_timestamp(accepted.timestamp());
     final->set_author(accepted.author());

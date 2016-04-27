@@ -33,5 +33,5 @@ message IntroductionAccepted {
     optional InviteResponse invite_response = 4;
     repeated string member = 5; // ricochet ids like "ricochet:xxxxxxxxxxxxxxxx"
     repeated bytes member_public_key = 6;
-    repeated bytes member_signature = 7; // sig of entire InviteResponse packet + ricochetId
+    repeated bytes member_signature = 7; // sig from IntroductionResponse
 }

@@ -140,6 +140,7 @@ void GroupMember::connectIncomingSignals()
     Protocol::GroupMetaChannel *metaChannel = contact->connection()->findChannel<Protocol::GroupMetaChannel>(Protocol::Channel::Inbound);
     if (metaChannel) {
         connect(metaChannel, &Protocol::GroupMetaChannel::introductionReceived, [this](Protocol::Data::GroupMeta::Introduction introduction) {emit groupIntroductionReceived(introduction);});
+        connect(metaChannel, &Protocol::GroupMetaChannel::introductionResponseReceived, [this](Protocol::Data::GroupMeta::IntroductionResponse introductionResponse) { emit groupIntroductionResponseReceived(introductionResponse);});
     }
 }
 

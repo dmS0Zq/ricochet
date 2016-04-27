@@ -73,13 +73,13 @@ signals:
     void groupMessageAcknowledged(Protocol::Data::GroupChat::GroupMessage message, GroupMember *member, bool accepted);
 public slots:
     void onInviteMonitorDone(GroupInviteMonitor *monitor, bool responseReceived);
+    void onIntroductionMonitorDone(GroupIntroductionMonitor *monitor, GroupMember *invitee, bool totalAcceptance);
 private slots:
     void onChannelOpen(Protocol::Channel *channel);
     void onSettingsModified(const QString &key, const QJsonValue &value);
     void onGroupMessageReceived(Protocol::Data::GroupChat::GroupMessage &message);
     void onGroupIntroductionReceived(Protocol::Data::GroupMeta::Introduction &introduction);
     void onMessageMonitorDone(GroupMessageMonitor *monitor, bool totalAcknowlegement);
-    void onIntroductionMonitorDone(GroupIntroductionMonitor *monitor, GroupMember *invitee, bool totalAcceptance);
 private:
     QHash<QString, GroupMember*> m_groupMembers;
     int m_uniqueID;
