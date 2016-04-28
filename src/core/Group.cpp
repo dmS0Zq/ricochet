@@ -242,7 +242,6 @@ bool Group::verifyPacket(const Protocol::Data::GroupMeta::IntroductionResponse &
     QByteArray data = author.toUtf8();
     data += QByteArray::fromRawData(packet.invite_response().SerializeAsString().data(), packet.invite_response().SerializeAsString().size());
     data += QByteArray::fromRawData((char*)&accepted, sizeof(bool));
-    qDebug() << "data length:" << data.size();
     CryptoKey key;
     if (selfIdentity()->contactID() == author) {
         key = selfIdentity()->hiddenService()->privateKey();
@@ -265,14 +264,24 @@ bool Group::verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet)
             !packet.has_message_text()) {
         return false;
     }
-    BUG() << "Group::verifyPacket GroupMessage not checked";
-    //QString text = QString::fromStdString(packet.message_text());
-    //QString time = QDateTime::fromMSecsSinceEpoch(packet.timestamp()).toUTC().toString();
-    //QByteArray data = QByteArray::fromStdString(text.toStdString() + time.toStdString());
-    //QString author = QString::fromStdString(packet.author());
-    //QByteArray sig = QByteArray::fromStdString(packet.signature());
-    //return m_groupMembers[author]->key().verifyData(data, sig);
-    return false;
+    unsigned id = packet.message_id();
+    QByteArray signature = QByteArray::fromStdString(packet.signature());
+    QDateTime timestamp = QDateTime::fromMSecsSinceEpoch(packet.timestamp()).toUTC();
+    QString author = QString::fromStdString(packet.author());
+    QString messageText = QString::fromStdString(packet.message_text());
+    QByteArray data = QByteArray::fromRawData((char*)&id, sizeof(unsigned));
+    data += messageText.toUtf8();
+    data += timestamp.toString().toUtf8();
+    CryptoKey key;
+    if (selfIdentity()->contactID() == author) {
+        key = selfIdentity()->hiddenService()->privateKey();
+    } else {
+        key = contactsManager->lookupHostname(author)->publicKey();
+    }
+    if (!key.verifyData(data, signature)) {
+        return false;
+    }
+    return true;
 }
 
 bool verifyPacket(const Protocol::Data::GroupChat::GroupMessageAcknowledge &packet)
@@ -281,7 +290,6 @@ bool verifyPacket(const Protocol::Data::GroupChat::GroupMessageAcknowledge &pack
             !packet.has_accepted()) {
         return false;
     }
-    BUG() << "Group::verifyPacket GroupMessageAcknowledge not implemeneted";
     return true;
 }
 
@@ -299,12 +307,13 @@ void Group::beginProtocolSendMessage(QString messageText)
     Protocol::Data::GroupChat::GroupMessage message;
     if (messageText.size() > Protocol::GroupChatChannel::MessageMaxCharacters)
         messageText.truncate(Protocol::GroupChatChannel::MessageMaxCharacters);
+    unsigned id = SecureRNG::randomInt(UINT_MAX);
     QDateTime timestamp = QDateTime::currentDateTimeUtc();
-    message.set_message_id(SecureRNG::randomInt(UINT_MAX));
+    message.set_message_id(id);
     message.set_timestamp(QDateTime::currentDateTimeUtc().toMSecsSinceEpoch());
     message.set_author(selfIdentity()->contactID().toStdString());
     message.set_message_text(messageText.toStdString());
-    QByteArray sig = signData(messageText.toUtf8() + timestamp.toString().toUtf8());
+    QByteArray sig = signData(QByteArray::fromRawData((char*)&id, sizeof(unsigned)) + messageText.toUtf8() + timestamp.toString().toUtf8());
     message.set_signature(sig.constData(), sig.size());
     if (!verifyPacket(message)) {
         BUG() << "Just made a GroupMessage packet, but it didn't verify";
@@ -440,6 +449,12 @@ void Group::onGroupIntroductionReceived(Protocol::Data::GroupMeta::Introduction 
         return;
     GroupMember *member = new GroupMember(invitedUser);
     addGroupMember(member);
+    if (member->key().publicKeyDigest() == CryptoKey().publicKeyDigest()) {
+        QByteArray keyData = QByteArray::fromStdString(introduction.invite_response().public_key());
+        if (!member->setKey(keyData)) {
+            qWarning() << "Group::onGroupIntroductionReceived need to add public key to member, but couldn't";
+        }
+    }
     Protocol::Data::GroupMeta::IntroductionResponse response;
     Protocol::Data::GroupInvite::InviteResponse *inviteResponse = new Protocol::Data::GroupInvite::InviteResponse();
     inviteResponse->set_signature(introduction.invite_response().signature());

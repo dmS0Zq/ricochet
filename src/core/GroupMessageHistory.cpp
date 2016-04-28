@@ -8,7 +8,7 @@ void GroupMessageHistory::insert(Protocol::Data::GroupChat::GroupMessage message
 {
     QByteArray key = QCryptographicHash::hash(QString::fromStdString(message.message_text()).toUtf8() + QDateTime::fromMSecsSinceEpoch(message.timestamp()).toUTC().toString().toUtf8(), QCryptographicHash::Sha256);
     m_history.insert(key, message);
-    qDebug() << m_history.size() << "messages" << "and oldest from" << m_history[keyOfOldest()].timestamp();
+    //qDebug() << m_history.size() << "messages" << "and oldest from" << m_history[keyOfOldest()].timestamp();
     prune();
     //foreach (auto m, m_history)
     //    qDebug() << QDateTime::fromMSecsSinceEpoch(m.timestamp()).toLocalTime().toString();

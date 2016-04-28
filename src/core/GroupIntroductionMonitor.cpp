@@ -13,7 +13,7 @@ GroupIntroductionMonitor::GroupIntroductionMonitor(Introduction introduction, Gr
     , m_group(group)
 {
     m_timer.setSingleShot(true);
-    m_timer.setInterval(10 * 1000);
+    m_timer.setInterval(30 * 1000);
     foreach (auto member, members) {
         if (!member->isSelf() && member->ricochetId() != m_invitee->ricochetId()) {
             m_outstandingMembers.insert(member->ricochetId(), member);

@@ -15,9 +15,9 @@ GroupInviteMonitor::GroupInviteMonitor(Invite &invite, GroupMember *invitee, Gro
 {
     m_timer.setSingleShot(true);
     if (m_invitee->isSelf()) {
-        m_timer.setInterval(10 * 1000);  
+        m_timer.setInterval(30 * 1000);
     } else {
-        m_timer.setInterval(10 * 1000);
+        m_timer.setInterval(30 * 1000);
     }
 }
 

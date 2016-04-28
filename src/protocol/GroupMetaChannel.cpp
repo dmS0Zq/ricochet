@@ -45,7 +45,6 @@ void GroupMetaChannel::receivePacket(const QByteArray &packet)
 
 bool GroupMetaChannel::sendIntroduction(Data::GroupMeta::Introduction introduction)
 {
-    qDebug() << "GroupMetaChannel::sendIntroduction";
     Data::GroupInvite::InviteResponse *inviteResponse = new Data::GroupInvite::InviteResponse();
     inviteResponse->set_signature(introduction.invite_response().signature());
     inviteResponse->set_timestamp(introduction.invite_response().timestamp());

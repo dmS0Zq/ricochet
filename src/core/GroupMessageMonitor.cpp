@@ -12,7 +12,7 @@ GroupMessageMonitor::GroupMessageMonitor(GroupMessage message, QHash<QString, Gr
         if (!member->isSelf())
             m_outstandingMembers.insert(member->ricochetId(), member);
     m_message = message;
-    QTimer::singleShot(10*1000, this, &GroupMessageMonitor::onTimeout);
+    QTimer::singleShot(30*1000, this, &GroupMessageMonitor::onTimeout);
 }
 
 void GroupMessageMonitor::onTimeout()
