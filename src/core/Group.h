@@ -94,6 +94,7 @@ private:
 
     void beginProtocolIntroduction(const Protocol::Data::GroupInvite::InviteResponse &response, GroupMember *invitee);
     void beginProtocolForwardMessage(Protocol::Data::GroupChat::GroupMessage &message);
+    void beginProtocolRebalance();
 };
 
 Q_DECLARE_METATYPE(Group*)

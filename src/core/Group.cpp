@@ -298,6 +298,16 @@ UserIdentity *Group::selfIdentity()
     return identityManager->identities().at(0); // assume 1 identity
 }
 
+void Group::beginProtocolRebalance()
+{
+    if (m_state != State::Rebalancing) {
+        qWarning() << "Not rebalancing because in state" << m_state;
+        return;
+    }
+    m_messageHistory.reset();
+    m_state = State::Good;
+}
+
 void Group::beginProtocolSendMessage(QString messageText)
 {
     if (m_state == State::Undefined || m_state == State::Rebalancing || m_state == State::IssueResolution) {
@@ -357,6 +367,7 @@ void Group::beginProtocolInvite(ContactUser *contact)
         qWarning() << "Group::beginProtocolInvite could not send invite";
     }
 }
+
 void Group::beginProtocolIntroduction(const Protocol::Data::GroupInvite::InviteResponse &response, GroupMember *invitee)
 {
     //if (m_groupMembers.size() < 2) {
@@ -557,7 +568,7 @@ void Group::onIntroductionMonitorDone(GroupIntroductionMonitor *monitor, GroupMe
     }
     addGroupMember(invitee);
     invitee->sendIntroductionAccepted(accepted);
-    //m_state = State::Rebalancing;
-    m_state = State::Good;
+    m_state = State::Rebalancing;
+    beginProtocolRebalance();
     delete monitor;
 }
