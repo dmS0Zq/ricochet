@@ -1,47 +1,60 @@
 #include "GroupMessageHistory.h"
 
-#include <QCryptographicHash>
 #include <QDateTime>
 #include <QDebug>
 
-void GroupMessageHistory::insert(Protocol::Data::GroupChat::GroupMessage message)
+using Protocol::Data::GroupChat::GroupMessage;
+
+GroupMessageHistory::GroupMessageHistory()
+    : m_epoch(QByteArray(32, 0x0))
 {
-    QByteArray key = QCryptographicHash::hash(QString::fromStdString(message.message_text()).toUtf8() + QDateTime::fromMSecsSinceEpoch(message.timestamp()).toUTC().toString().toUtf8(), QCryptographicHash::Sha256);
-    m_history.insert(key, message);
-    //qDebug() << m_history.size() << "messages" << "and oldest from" << m_history[keyOfOldest()].timestamp();
-    prune();
-    //foreach (auto m, m_history)
-    //    qDebug() << QDateTime::fromMSecsSinceEpoch(m.timestamp()).toLocalTime().toString();
-    //qDebug() << "\n";
 }
 
-QByteArray GroupMessageHistory::keyOfOldest()
+void GroupMessageHistory::insert(GroupMessage message)
 {
-    QByteArray old;
-    for (auto it = m_history.begin(); it != m_history.end(); it++) {
-        if (old == QByteArray())
-            old = it.key();
-        else if ((*it).timestamp() < m_history[old].timestamp()) {
-            old = it.key();
-        }
-    }
-    return old;
+    auto hash = hashMessage(message);
+    m_history.insert(hash, message);
+    m_insertOrder.insert(hash, m_history.size()-1);
+    qDebug() << "epoch:" << m_epoch.toHex();
+    qDebug() << m_history.size() << combine(m_history.size()).toHex();
+    qDebug() << m_history.size()-1 << combine(m_history.size()-1).toHex();
 }
 
-void GroupMessageHistory::prune()
+bool GroupMessageHistory::contains(const GroupMessage &message)
 {
-    if (m_history.size() <= GroupMessageHistory::MinimumMessageCount)
-        return;
-    auto now = QDateTime::currentDateTimeUtc();
-    auto oldest = keyOfOldest();
-    auto oldMessage = m_history[oldest];
-    auto oldMessageTimestamp = QDateTime::fromMSecsSinceEpoch(oldMessage.timestamp()).toUTC();
-    while (oldMessageTimestamp.addSecs(15) < now
-        && m_history.size() > GroupMessageHistory::MinimumMessageCount)
-    {
-        m_history.remove(oldest);
-        oldest = keyOfOldest();
-        oldMessage = m_history[oldest];
-        oldMessageTimestamp = QDateTime::fromMSecsSinceEpoch(oldMessage.timestamp()).toUTC();
+    return m_history.keys().contains(hashMessage(message));
+}
+
+void GroupMessageHistory::reset()
+{
+    m_epoch = combine(m_history.size());
+    m_history.clear();
+    m_insertOrder.clear();
+}
+
+QByteArray GroupMessageHistory::hashMessage(const GroupMessage &message)
+{
+    int64_t timestamp = message.timestamp();
+    QByteArray data; // author + timestamp + message_text
+    data += QByteArray::fromStdString(message.author());
+    data += QByteArray::fromRawData((char*)&timestamp, sizeof(int64_t));
+    data += QByteArray::fromStdString(message.message_text());
+    QByteArray hash = QCryptographicHash::hash(data, HashMethod);
+    return hash;
+}
+
+QByteArray GroupMessageHistory::combine(int number)
+{
+    if (number > m_history.size()) {
+        qWarning() << "Cannot combine" << number << "messages because there's only" << m_history.size() << ". Returning empty QByteArray";
+        return QByteArray();
     }
+    QByteArray final = QByteArray();
+    foreach (auto message, m_history) {
+        if (m_insertOrder[hashMessage(message)] >= number) continue;
+        auto data = message.SerializeAsString();
+        final += QByteArray::fromRawData(data.data(), data.size());
+        final = QCryptographicHash::hash(final, GroupMessageHistory::HashMethod);
+    }
+    return final;
 }
