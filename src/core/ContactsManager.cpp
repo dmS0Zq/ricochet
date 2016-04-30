@@ -130,10 +130,12 @@ void ContactsManager::contactDeleted(ContactUser *user)
 ContactUser *ContactsManager::contactUserFromChannel(const Protocol::Channel *channel)
 {
     for (auto contact = pContacts.begin(); contact != pContacts.end(); contact++) {
-        auto channels = (*contact)->connection()->channels();
-        for (auto chan = channels.begin(); chan != channels.end(); chan++) {
-            if ((*chan) == channel) {
-                return (*contact);
+        if ((*contact)->connection().data()) {
+            auto channels = (*contact)->connection()->channels();
+            for (auto chan = channels.begin(); chan != channels.end(); chan++) {
+                if ((*chan) == channel) {
+                    return (*contact);
+                }
             }
         }
     }
