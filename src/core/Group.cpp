@@ -33,7 +33,9 @@ void Group::setName(const QString &name)
 
 void Group::setState(const State &state)
 {
+    State old = m_state;
     m_state = state;
+    qDebug() << "Group::setState changing state from" << old << "to" << state;
     emit stateChanged(m_state);
 }
 
@@ -46,10 +48,26 @@ void Group::addGroupMember(GroupMember *member)
         connect(member->connection(), &Protocol::Connection::channelOpened, this, &Group::onChannelOpen);
         connect(member, &GroupMember::groupMessageReceived, this, &Group::onGroupMessageReceived);
         connect(member, &GroupMember::groupIntroductionReceived, this, &Group::onGroupIntroductionReceived);
+        connect(member, &GroupMember::leaveReceived, this, &Group::onLeaveReceived);
     }
     else {
-        qDebug() << member->ricochetId() << "already in group";
+        qDebug() << member->nickname() << "already in group";
     }
+    qDebug() << "Group members: ";
+    foreach (auto member, m_groupMembers) {
+        qDebug() << "    " << member->nickname();
+    }
+}
+
+void Group::removeGroupMember(GroupMember *member)
+{
+    if (!member) return;
+    if (!m_groupMembers.contains(member->ricochetId())) {
+        qWarning() << "Group::removeGroupMember" << member->nickname() << "not in the group";
+        return;
+    }
+    m_groupMembers.remove(member->ricochetId());
+    qDebug() << "Removed" << member->nickname() << "from group";
     qDebug() << "Group members: ";
     foreach (auto member, m_groupMembers) {
         qDebug() << "    " << member->nickname();
@@ -255,6 +273,29 @@ bool Group::verifyPacket(const Protocol::Data::GroupMeta::IntroductionResponse &
     return true;
 }
 
+bool Group::verifyPacket(const Protocol::Data::GroupMeta::Leave &packet)
+{
+    if (!packet.has_author() ||
+            !packet.has_timestamp() ||
+            !packet.has_signature()) {
+        return false;
+    }
+    QByteArray signature = QByteArray::fromStdString(packet.signature());
+    QString author = QString::fromStdString(packet.author());
+    QDateTime timestamp = QDateTime::fromMSecsSinceEpoch(packet.timestamp()).toUTC();
+    QByteArray data = author.toUtf8() + timestamp.toString().toUtf8();
+    CryptoKey key;
+    if (selfIdentity()->contactID() == author) {
+        key = selfIdentity()->hiddenService()->privateKey();
+    } else {
+        key = contactsManager->lookupHostname(author)->publicKey();
+    }
+    if (!key.verifyData(data, signature)) {
+        return false;
+    }
+    return true;
+}
+
 bool Group::verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet)
 {
     if (!packet.has_message_id() ||
@@ -300,18 +341,18 @@ UserIdentity *Group::selfIdentity()
 
 void Group::beginProtocolRebalance()
 {
-    if (m_state != State::Rebalancing) {
-        qWarning() << "Not rebalancing because in state" << m_state;
+    if (state() != State::Rebalancing) {
+        qWarning() << "Not rebalancing because in state" << state();
         return;
     }
     m_messageHistory.reset();
-    m_state = State::Good;
+    setState(State::Good);
 }
 
 void Group::beginProtocolSendMessage(QString messageText)
 {
-    if (m_state == State::Undefined || m_state == State::Rebalancing || m_state == State::IssueResolution) {
-        qWarning() << "Not sending message because in state" << m_state;
+    if (state() == State::Undefined || state() == State::Rebalancing || state() == State::IssueResolution) {
+        qWarning() << "Not sending message because in state" << state();
         return;
     }
     Protocol::Data::GroupChat::GroupMessage message;
@@ -343,8 +384,8 @@ void Group::beginProtocolSendMessage(QString messageText)
 void Group::beginProtocolInvite(ContactUser *contact)
 {
     using Protocol::Data::GroupInvite::Invite;
-    if (m_state != State::Good) {
-        qWarning() << "Not inviting" << contact->contactID() << "because in state" << m_state;
+    if (state() != State::Good) {
+        qWarning() << "Not inviting" << contact->contactID() << "because in state" << state();
         return;
     }
     GroupMember *inviter = new GroupMember(selfIdentity());
@@ -362,7 +403,7 @@ void Group::beginProtocolInvite(ContactUser *contact)
     invite.set_author(author.toStdString());
     invite.set_public_key(publicKey.constData(), publicKey.size());
     GroupInviteMonitor *monitor = new GroupInviteMonitor(invite, invitee, inviter, this, this);
-    m_state = State::PendingInvite;
+    setState(State::PendingInvite);
     if (!monitor->go()) {
         qWarning() << "Group::beginProtocolInvite could not send invite";
     }
@@ -400,7 +441,7 @@ void Group::beginProtocolIntroduction(const Protocol::Data::GroupInvite::InviteR
         BUG() << "Just made an Introduction packet but it didn't verify";
         return;
     }
-    m_state = State::PendingIntroduction;
+    setState(State::PendingIntroduction);
     GroupIntroductionMonitor *monitor = new GroupIntroductionMonitor(introduction, invitee, this, m_groupMembers, this);
     if (!monitor->go()) {
         qWarning() << "Group::beginProtocolIntroduction could not send introduction";
@@ -440,6 +481,7 @@ void Group::onGroupMessageReceived(Protocol::Data::GroupChat::GroupMessage &mess
                         QString::fromStdString(message.message_text());
         return;
     }
+    if (m_messageHistory.contains(message)) return;
     qDebug() << "✓" << QDateTime::fromMSecsSinceEpoch(message.timestamp()).toString() <<
                     m_groupMembers[QString::fromStdString(message.author())]->nickname() <<
                     QString::fromStdString(message.message_text());
@@ -450,10 +492,15 @@ void Group::onGroupMessageReceived(Protocol::Data::GroupChat::GroupMessage &mess
 
 void Group::onGroupIntroductionReceived(Protocol::Data::GroupMeta::Introduction &introduction)
 {
+    if (!(state() == State::Good)) {
+        qWarning() << "Group::onGroupIntroductionReceived ignorning introduction because in state" << state();
+        return;
+    }
     if (!verifyPacket(introduction)) {
         qWarning() << "Group::onGroupIntroductionReceived introduction didn't verify and shouldn't have gotten to here.";
         return;
     }
+    //setState(State::PendingIntroduction);
     QString hostname = QString::fromStdString(introduction.invite_response().author());
     ContactUser *invitedUser = contactsManager->lookupHostname(hostname);
     if (!invitedUser)
@@ -496,6 +543,22 @@ void Group::onGroupIntroductionReceived(Protocol::Data::GroupMeta::Introduction 
         if (member->ricochetId() != selfIdentity()->contactID())
             member->sendIntroductionResponse(response);
     }
+}
+
+void Group::onLeaveReceived(Protocol::Data::GroupMeta::Leave leave)
+{
+    if (!verifyPacket(leave)) {
+        qWarning() << "Group::onleaveReceived ignoring Leave which didn't verify";
+        return;
+    }
+    QString author = QString::fromStdString(leave.author());
+    if (!m_groupMembers.contains(author)) {
+        BUG() << "Group::onLeaveReceived the person leaving does not seem to be in the group";
+        return;
+    }
+    GroupMember *member = m_groupMembers[author];
+    removeGroupMember(member);
+    delete member;
 }
 
 void Group::onMessageMonitorDone(GroupMessageMonitor *monitor, bool totalAcknowledgement)
@@ -568,7 +631,30 @@ void Group::onIntroductionMonitorDone(GroupIntroductionMonitor *monitor, GroupMe
     }
     addGroupMember(invitee);
     invitee->sendIntroductionAccepted(accepted);
-    m_state = State::Rebalancing;
+    setState(State::Rebalancing);
     beginProtocolRebalance();
     delete monitor;
+}
+
+void Group::leaveGroup()
+{
+    Protocol::Data::GroupMeta::Leave leave;
+    QString author = selfIdentity()->contactID();
+    QDateTime timestamp = QDateTime::currentDateTimeUtc();
+    QByteArray signature = signData(author.toUtf8() + timestamp.toString().toUtf8());
+    leave.set_author(author.toStdString());
+    leave.set_timestamp(timestamp.toMSecsSinceEpoch());
+    leave.set_signature(signature.constData(), signature.size());
+    if (!verifyPacket(leave)) {
+        BUG() << "Group::leaveGroup just created a Leave and it didn't verify";
+        return;
+    }
+    foreach (auto member, m_groupMembers) {
+        member->sendLeave(leave);
+    }
+    foreach (auto member, m_groupMembers) {
+        if (member->isSelf()) continue; // for testing
+        removeGroupMember(member);
+        delete member;
+    }
 }

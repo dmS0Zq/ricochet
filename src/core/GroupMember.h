@@ -33,6 +33,7 @@ public:
     bool sendMessage(Protocol::Data::GroupChat::GroupMessage message);
     bool sendIntroduction(Protocol::Data::GroupMeta::Introduction introduction);
     bool sendIntroductionResponse(Protocol::Data::GroupMeta::IntroductionResponse introductionResponse);
+    bool sendLeave(Protocol::Data::GroupMeta::Leave &leave);
 
     // connects signals from incoming/outgoing channels respectively
     void connectIncomingSignals();
@@ -44,7 +45,7 @@ signals:
     void inviteResponseReceived(const Protocol::Data::GroupInvite::InviteResponse &response);
     void groupMessageAcknowledged(Protocol::Data::GroupChat::GroupMessage message, GroupMember *member, bool accepted);
     void groupIntroductionResponseReceived(Protocol::Data::GroupMeta::IntroductionResponse introductionResponse);
-
+    void leaveReceived(Protocol::Data::GroupMeta::Leave leave);
 private:
     bool m_isSelf;
     QByteArray m_position;

@@ -59,6 +59,7 @@ public:
     static bool verifyPacket(const Protocol::Data::GroupInvite::IntroductionAccepted &packet);
     static bool verifyPacket(const Protocol::Data::GroupMeta::Introduction &packet);
     static bool verifyPacket(const Protocol::Data::GroupMeta::IntroductionResponse &packet);
+    static bool verifyPacket(const Protocol::Data::GroupMeta::Leave &packet);
     static bool verifyPacket(const Protocol::Data::GroupChat::GroupMessage &packet);
     static bool verifyPacket(const Protocol::Data::GroupChat::GroupMessageAcknowledge &packet);
 
@@ -67,6 +68,7 @@ public:
 
     Q_INVOKABLE void beginProtocolInvite(ContactUser *contact);
     Q_INVOKABLE void beginProtocolSendMessage(QString messageText);
+    Q_INVOKABLE void leaveGroup();
 signals:
     void nameChanged();
     void stateChanged(State state);
@@ -79,6 +81,7 @@ private slots:
     void onSettingsModified(const QString &key, const QJsonValue &value);
     void onGroupMessageReceived(Protocol::Data::GroupChat::GroupMessage &message);
     void onGroupIntroductionReceived(Protocol::Data::GroupMeta::Introduction &introduction);
+    void onLeaveReceived(Protocol::Data::GroupMeta::Leave leave);
     void onMessageMonitorDone(GroupMessageMonitor *monitor, bool totalAcknowlegement);
 private:
     QHash<QString, GroupMember*> m_groupMembers;

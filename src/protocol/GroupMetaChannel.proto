@@ -5,6 +5,7 @@ import "GroupInviteChannel.proto";
 message Packet {
     optional Introduction introduction = 1;
     optional IntroductionResponse introduction_response = 2;
+    optional Leave leave = 3;
 }
 
 message Introduction {
@@ -25,3 +26,9 @@ message IntroductionResponse {
     optional string author = 5;
 }
 
+message Leave {
+    // signature = author + timestamp.toString
+    optional bytes signature = 1;
+    optional int64 timestamp = 2;
+    optional string author = 3;
+}

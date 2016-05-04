@@ -128,6 +128,23 @@ bool GroupMember::sendIntroductionResponse(Protocol::Data::GroupMeta::Introducti
    return true;
 }
 
+bool GroupMember::sendLeave(Protocol::Data::GroupMeta::Leave &leave)
+{
+    if (this->isSelf()) return true;
+    auto channel = contact->connection()->findChannel<Protocol::GroupMetaChannel>(Protocol::Channel::Outbound);
+    if (!channel) {
+        channel = new Protocol::GroupMetaChannel(Protocol::Channel::Outbound, contact->connection().data());
+        if (!channel->openChannel()) {
+            return false;
+        }
+        connectOutgoingSignals();
+    }
+    if (!channel->sendLeave(leave)) {
+        return false;
+    }
+    return true;
+}
+
 void GroupMember::connectIncomingSignals()
 {
     Protocol::GroupInviteChannel *inviteChannel = contact->connection()->findChannel<Protocol::GroupInviteChannel>(Protocol::Channel::Inbound);
@@ -141,6 +158,7 @@ void GroupMember::connectIncomingSignals()
     if (metaChannel) {
         connect(metaChannel, &Protocol::GroupMetaChannel::introductionReceived, [this](Protocol::Data::GroupMeta::Introduction introduction) {emit groupIntroductionReceived(introduction);});
         connect(metaChannel, &Protocol::GroupMetaChannel::introductionResponseReceived, [this](Protocol::Data::GroupMeta::IntroductionResponse introductionResponse) { emit groupIntroductionResponseReceived(introductionResponse);});
+        connect(metaChannel, &Protocol::GroupMetaChannel::leaveReceived, [this](Protocol::Data::GroupMeta::Leave leave) {emit leaveReceived(leave);});
     }
 }
 

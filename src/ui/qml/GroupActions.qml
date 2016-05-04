@@ -14,6 +14,11 @@ Item {
         //window.requestActivate()
     }
 
+    function leaveGroup() {
+        var group = groupsManager.test_getTestingGroup();
+        group.leaveGroup();
+    }
+
     function removeGroup() {
         removeGroupDialog.active = true
         if (removeGroupDialog.item !== null) {
@@ -47,8 +52,8 @@ Item {
         }
         MenuSeparator { }
         MenuItem {
-            text: qsTr("Remove")
-            onTriggered: removeGroup()
+            text: qsTr("Leave Group")
+            onTriggered: leaveGroup()
         }
     }
 

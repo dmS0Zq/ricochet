@@ -15,9 +15,9 @@ void GroupMessageHistory::insert(GroupMessage message)
     auto hash = hashMessage(message);
     m_history.insert(hash, message);
     m_insertOrder.insert(hash, m_history.size()-1);
-    qDebug() << "epoch:" << m_epoch.toHex();
-    qDebug() << m_history.size() << combine(m_history.size()).toHex();
-    qDebug() << m_history.size()-1 << combine(m_history.size()-1).toHex();
+    //qDebug() << "epoch:" << m_epoch.toHex();
+    //qDebug() << m_history.size() << combine(m_history.size()).toHex()
+    //qDebug() << m_history.size()-1 << combine(m_history.size()-1).toHex();
 }
 
 bool GroupMessageHistory::contains(const GroupMessage &message)

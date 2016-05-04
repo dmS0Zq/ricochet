@@ -37,6 +37,8 @@ void GroupMetaChannel::receivePacket(const QByteArray &packet)
         handleIntroduction(p.introduction());
     else if (p.has_introduction_response())
         handleIntroductionResponse(p.introduction_response());
+    else if (p.has_leave())
+        handleLeave(p.leave());
     else {
         qWarning() << "Unrecognized message on" << type();
         closeChannel();
@@ -79,6 +81,19 @@ bool GroupMetaChannel::sendIntroductionResponse(Data::GroupMeta::IntroductionRes
     return true;
 }
 
+bool GroupMetaChannel::sendLeave(Data::GroupMeta::Leave &leave)
+{
+    Data::GroupMeta::Leave *final = new Data::GroupMeta::Leave();
+    final->set_signature(leave.signature());
+    final->set_timestamp(leave.timestamp());
+    final->set_author(leave.author());
+    Data::GroupMeta::Packet packet;
+    packet.set_allocated_leave(final);
+    if (!Channel::sendMessage(packet))
+        return false;
+    return true;
+}
+
 void GroupMetaChannel::handleIntroduction(const Data::GroupMeta::Introduction &introduction)
 {
     Group *group = groupsManager->groupFromChannel(this);
@@ -96,4 +111,18 @@ void GroupMetaChannel::handleIntroduction(const Data::GroupMeta::Introduction &i
 void GroupMetaChannel::handleIntroductionResponse(const Data::GroupMeta::IntroductionResponse &introductionResponse)
 {
     emit introductionResponseReceived(introductionResponse);
+}
+
+void GroupMetaChannel::handleLeave(const Data::GroupMeta::Leave &leave)
+{
+    Group *group = groupsManager->groupFromChannel(this);
+    if (!group) {
+        BUG() << "Unknown group from meta channel"<<identifier()<<". Where did this packet come from?";
+        return;
+    }
+    if (!group->verifyPacket(leave)) {
+        qWarning() << "GroupMetaChannel::handleLeave ignoring leave that didn't verify";
+        return;
+    }
+    emit leaveReceived(leave);
 }

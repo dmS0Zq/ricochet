@@ -14,9 +14,11 @@ public:
     explicit GroupMetaChannel(Direction direction, Connection *connection);
     bool sendIntroduction(Data::GroupMeta::Introduction introduction);
     bool sendIntroductionResponse(Data::GroupMeta::IntroductionResponse introductionResponse);
+    bool sendLeave(Data::GroupMeta::Leave &leave);
 signals:
     void introductionReceived(Data::GroupMeta::Introduction introduction);
     void introductionResponseReceived(Data::GroupMeta::IntroductionResponse introductionResponse);
+    void leaveReceived(Data::GroupMeta::Leave leave);
 protected:
     virtual bool allowInboundChannelRequest(const Data::Control::OpenChannel *request, Data::Control::ChannelResult *result);
     virtual bool allowOutboundChannelRequest(Data::Control::OpenChannel *request);
@@ -24,6 +26,7 @@ protected:
 private:
     void handleIntroduction(const Data::GroupMeta::Introduction &introduction);
     void handleIntroductionResponse(const Data::GroupMeta::IntroductionResponse &introductionResponse);
+    void handleLeave(const Data::GroupMeta::Leave &leave);
 };
 
 }
